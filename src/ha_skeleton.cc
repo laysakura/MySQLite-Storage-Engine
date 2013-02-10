@@ -89,7 +89,7 @@
 
 #include "sql_priv.h"
 #include "sql_class.h"           // MYSQL_HANDLERTON_INTERFACE_VERSION
-#include "ha_example.h"
+#include "ha_skeleton.h"
 #include "probes_mysql.h"
 #include "sql_plugin.h"
 
@@ -977,9 +977,9 @@ mysql_declare_plugin(example)
 {
   MYSQL_STORAGE_ENGINE_PLUGIN,
   &example_storage_engine,
-  "EXAMPLE",
-  "Brian Aker, MySQL AB",
-  "Example storage engine",
+  "YA_SKELETON",
+  "Sho Nakatani",
+  "Yet Anogher Skeleton Storage Engine",
   PLUGIN_LICENSE_GPL,
   example_init_func,                            /* Plugin Init */
   NULL,                                         /* Plugin Deinit */

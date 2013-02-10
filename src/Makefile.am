@@ -13,7 +13,7 @@ noinst_HEADERS = ha_skeleton.h \
 
 lib_LTLIBRARIES = libskeleton_engine.la
 libskeleton_engine_la_SOURCES = ha_skeleton.cc
-libskeleton_engine_la_LIBADD =
+libskeleton_engine_la_LIBADD = $(MYSQL_SRC)/libservices/libmysqlservices.a
 
 if HAVE_DTRACE
   libskeleton_engine_la_LIBADD += skeleton_probes.o

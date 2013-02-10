@@ -2,7 +2,7 @@ dnl For skeleton MySQL Engine
 AC_INIT(src/ha_skeleton.cc)
 AC_CONFIG_AUX_DIR(config)
 AM_CONFIG_HEADER(src/skeleton_config.h)
-AM_INIT_AUTOMAKE("skeleton_engine", 0.7)
+AM_INIT_AUTOMAKE("ya_skeleton_engine", 0.1)
 
 AC_PROG_CC
 AC_PROG_CXX
@@ -18,6 +18,7 @@ sinclude(config/dtrace.m4)
 
 MYSQL_SRC_TEST
 AC_SUBST(MYSQL_INC)
+AC_SUBST(MYSQL_SRC)
 
 # We only support GCC and Sun's forte at the moment
 if test "$GCC" = "yes"

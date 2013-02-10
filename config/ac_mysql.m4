@@ -7,9 +7,7 @@ AC_DEFUN([MYSQL_SRC_TEST], [
   [[  --with-mysql[=mysql src directory]      
                         Source requir to build engine.]],
   [
-    if test -d "$withval/sql"; then
-      MYSQL_SRC="$i/mysql_config"
-    fi
+    MYSQL_SRC="$withval"
     
     AC_DEFINE([MYSQL_SRC], [1], [Source directory for MySQL])
     MYSQL_INC="-I$withval/sql -I$withval/include -I$withval/regex -I$withval"
