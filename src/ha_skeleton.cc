@@ -979,7 +979,7 @@ mysql_declare_plugin(example)
   &example_storage_engine,
   "YA_SKELETON",
   "Sho Nakatani",
-  "Yet Anogher Skeleton Storage Engine",
+  "Yet Another Skeleton Storage Engine",
   PLUGIN_LICENSE_GPL,
   example_init_func,                            /* Plugin Init */
   NULL,                                         /* Plugin Deinit */
