@@ -1,0 +1,29 @@
+Hi!
+
+This is an skeleton engine, it does not do much. Its been put together for
+documentation reasons and as a way to get someone started quickly.
+
+To install, grab a copy of the mysql source code and run this:
+./configure --with-mysql=/home/brian/mysql-5.1/ --libdir=/usr/local/lib/mysql/
+make install
+
+And then inside of MySQL:
+
+mysql> INSTALL PLUGIN skeleton SONAME 'libskeleton_engine.so';
+
+mysql> CREATE TABLE `d` (`a` varchar(125), b text, primary key(a)) ENGINE=skeleton DEFAULT
+CHARSET=latin1;
+Query OK, 0 rows affected (0.01 sec)
+
+You will probably need to edit the Makefile.am in the src/ tree if you want
+to build on anything other then Linux (and the Makefile assumes that the
+server was not compiled for debug).
+
+For Solaris you can enable DTrace probes by adding to configure
+--enable-dtrace
+
+Have fun!
+
+Cheers,
+  -Brian
+

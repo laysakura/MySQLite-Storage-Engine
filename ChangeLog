@@ -1,0 +1,25 @@
+0.7 Tue Oct 30 11:51:54 PDT 2007
+  - License cleanup
+  - Code cleanup
+  - Minor change to documentation
+
+0.6 Thu Sep 20 03:45:11 PDT 2007
+  - Updated support for Solaris DTRACE
+
+0.5
+  - Updated bootstrap file to fix issues with Solaris
+  - CXXFLAGS now sets correctly for gcc (and does not set for other compilers)
+  - Fixed glibtool issue for OSX
+
+0.4 Wed Jul 11 09:06:45 PDT 2007
+  - Minor fix for key in hash
+
+0.3 -  Mon Jun 18 16:34:54 PDT 2007
+  - Added systems additions from Paul McCullagh (paul.mccullagh@primebase.com)
+  - Updated to remove defunct byte
+
+0.2 -  
+  - Fixed include issues for regex (Brian Miezejewski)
+
+0.1 -  Thu Dec 14 11:39:05 PST 2006
+  - Hacked this up for BrianM
