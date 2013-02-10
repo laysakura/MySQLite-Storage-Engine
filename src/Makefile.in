@@ -37,17 +37,17 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@HAVE_DTRACE_TRUE@am__append_1 = skeleton_probes.o
+@HAVE_DTRACE_TRUE@am__append_1 = mysqlite_probes.o
 subdir = src
 DIST_COMMON = $(noinst_HEADERS) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.in $(srcdir)/skeleton_config.h.in
+	$(srcdir)/Makefile.in $(srcdir)/mysqlite_config.h.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/ac_mysql.m4 \
 	$(top_srcdir)/config/dtrace.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = skeleton_config.h
+CONFIG_HEADER = mysqlite_config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -73,15 +73,15 @@ am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
 am__installdirs = "$(DESTDIR)$(libdir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
-libskeleton_engine_la_DEPENDENCIES =  \
+libmysqlite_engine_la_DEPENDENCIES =  \
 	$(MYSQL_SRC)/libservices/libmysqlservices.a $(am__append_1)
-am_libskeleton_engine_la_OBJECTS =  \
-	libskeleton_engine_la-ha_skeleton.lo
-libskeleton_engine_la_OBJECTS = $(am_libskeleton_engine_la_OBJECTS)
-libskeleton_engine_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+am_libmysqlite_engine_la_OBJECTS =  \
+	libmysqlite_engine_la-ha_mysqlite.lo
+libmysqlite_engine_la_OBJECTS = $(am_libmysqlite_engine_la_OBJECTS)
+libmysqlite_engine_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(libskeleton_engine_la_CXXFLAGS) $(CXXFLAGS) \
-	$(libskeleton_engine_la_LDFLAGS) $(LDFLAGS) -o $@
+	$(libmysqlite_engine_la_CXXFLAGS) $(CXXFLAGS) \
+	$(libmysqlite_engine_la_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -95,8 +95,8 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libskeleton_engine_la_SOURCES)
-DIST_SOURCES = $(libskeleton_engine_la_SOURCES)
+SOURCES = $(libmysqlite_engine_la_SOURCES)
+DIST_SOURCES = $(libmysqlite_engine_la_SOURCES)
 HEADERS = $(noinst_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -224,20 +224,20 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-EXTRA_DIST = ha_skeleton.h CMakeFiles.txt plug.in skeleton_probes.d
+EXTRA_DIST = ha_mysqlite.h CMakeFiles.txt plug.in mysqlite_probes.d
 INCLUDES = $(MYSQL_INC)
-DTRACEFILES = .libs/libskeleton_engine_la-ha_skeleton.o
-noinst_HEADERS = ha_skeleton.h \
-		 skeleton_probes.h
+DTRACEFILES = .libs/libmysqlite_engine_la-ha_mysqlite.o
+noinst_HEADERS = ha_mysqlite.h \
+		 mysqlite_probes.h
 
-lib_LTLIBRARIES = libskeleton_engine.la
-libskeleton_engine_la_SOURCES = ha_skeleton.cc
-libskeleton_engine_la_LIBADD =  \
+lib_LTLIBRARIES = libmysqlite_engine.la
+libmysqlite_engine_la_SOURCES = ha_mysqlite.cc
+libmysqlite_engine_la_LIBADD =  \
 	$(MYSQL_SRC)/libservices/libmysqlservices.a $(am__append_1)
-libskeleton_engine_la_LDFLAGS = -module
-libskeleton_engine_la_CFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
-libskeleton_engine_la_CXXFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
-all: skeleton_config.h
+libmysqlite_engine_la_LDFLAGS = -module
+libmysqlite_engine_la_CFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
+libmysqlite_engine_la_CXXFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
+all: mysqlite_config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
@@ -273,22 +273,22 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
-skeleton_config.h: stamp-h1
+mysqlite_config.h: stamp-h1
 	@if test ! -f $@; then \
 	  rm -f stamp-h1; \
 	  $(MAKE) $(AM_MAKEFLAGS) stamp-h1; \
 	else :; fi
 
-stamp-h1: $(srcdir)/skeleton_config.h.in $(top_builddir)/config.status
+stamp-h1: $(srcdir)/mysqlite_config.h.in $(top_builddir)/config.status
 	@rm -f stamp-h1
-	cd $(top_builddir) && $(SHELL) ./config.status src/skeleton_config.h
-$(srcdir)/skeleton_config.h.in:  $(am__configure_deps) 
+	cd $(top_builddir) && $(SHELL) ./config.status src/mysqlite_config.h
+$(srcdir)/mysqlite_config.h.in:  $(am__configure_deps) 
 	($(am__cd) $(top_srcdir) && $(AUTOHEADER))
 	rm -f stamp-h1
 	touch $@
 
 distclean-hdr:
-	-rm -f skeleton_config.h stamp-h1
+	-rm -f mysqlite_config.h stamp-h1
 install-libLTLIBRARIES: $(lib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
 	test -z "$(libdir)" || $(MKDIR_P) "$(DESTDIR)$(libdir)"
@@ -320,8 +320,8 @@ clean-libLTLIBRARIES:
 	  echo "rm -f \"$${dir}/so_locations\""; \
 	  rm -f "$${dir}/so_locations"; \
 	done
-libskeleton_engine.la: $(libskeleton_engine_la_OBJECTS) $(libskeleton_engine_la_DEPENDENCIES) 
-	$(libskeleton_engine_la_LINK) -rpath $(libdir) $(libskeleton_engine_la_OBJECTS) $(libskeleton_engine_la_LIBADD) $(LIBS)
+libmysqlite_engine.la: $(libmysqlite_engine_la_OBJECTS) $(libmysqlite_engine_la_DEPENDENCIES) 
+	$(libmysqlite_engine_la_LINK) -rpath $(libdir) $(libmysqlite_engine_la_OBJECTS) $(libmysqlite_engine_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -329,7 +329,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libskeleton_engine_la-ha_skeleton.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmysqlite_engine_la-ha_mysqlite.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -352,12 +352,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
 
-libskeleton_engine_la-ha_skeleton.lo: ha_skeleton.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libskeleton_engine_la_CXXFLAGS) $(CXXFLAGS) -MT libskeleton_engine_la-ha_skeleton.lo -MD -MP -MF $(DEPDIR)/libskeleton_engine_la-ha_skeleton.Tpo -c -o libskeleton_engine_la-ha_skeleton.lo `test -f 'ha_skeleton.cc' || echo '$(srcdir)/'`ha_skeleton.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libskeleton_engine_la-ha_skeleton.Tpo $(DEPDIR)/libskeleton_engine_la-ha_skeleton.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ha_skeleton.cc' object='libskeleton_engine_la-ha_skeleton.lo' libtool=yes @AMDEPBACKSLASH@
+libmysqlite_engine_la-ha_mysqlite.lo: ha_mysqlite.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmysqlite_engine_la_CXXFLAGS) $(CXXFLAGS) -MT libmysqlite_engine_la-ha_mysqlite.lo -MD -MP -MF $(DEPDIR)/libmysqlite_engine_la-ha_mysqlite.Tpo -c -o libmysqlite_engine_la-ha_mysqlite.lo `test -f 'ha_mysqlite.cc' || echo '$(srcdir)/'`ha_mysqlite.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libmysqlite_engine_la-ha_mysqlite.Tpo $(DEPDIR)/libmysqlite_engine_la-ha_mysqlite.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ha_mysqlite.cc' object='libmysqlite_engine_la-ha_mysqlite.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libskeleton_engine_la_CXXFLAGS) $(CXXFLAGS) -c -o libskeleton_engine_la-ha_skeleton.lo `test -f 'ha_skeleton.cc' || echo '$(srcdir)/'`ha_skeleton.cc
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmysqlite_engine_la_CXXFLAGS) $(CXXFLAGS) -c -o libmysqlite_engine_la-ha_mysqlite.lo `test -f 'ha_mysqlite.cc' || echo '$(srcdir)/'`ha_mysqlite.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -375,11 +375,11 @@ ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	mkid -fID $$unique
 tags: TAGS
 
-TAGS:  $(HEADERS) $(SOURCES) skeleton_config.h.in $(TAGS_DEPENDENCIES) \
+TAGS:  $(HEADERS) $(SOURCES) mysqlite_config.h.in $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	set x; \
 	here=`pwd`; \
-	list='$(SOURCES) $(HEADERS) skeleton_config.h.in $(LISP) $(TAGS_FILES)'; \
+	list='$(SOURCES) $(HEADERS) mysqlite_config.h.in $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
 	  done | \
@@ -397,9 +397,9 @@ TAGS:  $(HEADERS) $(SOURCES) skeleton_config.h.in $(TAGS_DEPENDENCIES) \
 	  fi; \
 	fi
 ctags: CTAGS
-CTAGS:  $(HEADERS) $(SOURCES) skeleton_config.h.in $(TAGS_DEPENDENCIES) \
+CTAGS:  $(HEADERS) $(SOURCES) mysqlite_config.h.in $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
-	list='$(SOURCES) $(HEADERS) skeleton_config.h.in $(LISP) $(TAGS_FILES)'; \
+	list='$(SOURCES) $(HEADERS) mysqlite_config.h.in $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
 	  done | \
@@ -449,7 +449,7 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(LTLIBRARIES) $(HEADERS) skeleton_config.h
+all-am: Makefile $(LTLIBRARIES) $(HEADERS) mysqlite_config.h
 installdirs:
 	for dir in "$(DESTDIR)$(libdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
@@ -567,14 +567,14 @@ uninstall-am: uninstall-libLTLIBRARIES
 	tags uninstall uninstall-am uninstall-libLTLIBRARIES
 
 
-skeleton_probes.h: skeleton_probes.d
-	$(DTRACE) $(DTRACEFLAGS) -h -s skeleton_probes.d
-	mv skeleton_probes.h skeleton_probes.h.bak
-	sed "s/#include <unistd.h>//g" skeleton_probes.h.bak > skeleton_probes.h
-	rm skeleton_probes.h.bak
+mysqlite_probes.h: mysqlite_probes.d
+	$(DTRACE) $(DTRACEFLAGS) -h -s mysqlite_probes.d
+	mv mysqlite_probes.h mysqlite_probes.h.bak
+	sed "s/#include <unistd.h>//g" mysqlite_probes.h.bak > mysqlite_probes.h
+	rm mysqlite_probes.h.bak
 
-skeleton_probes.o:
-	$(DTRACE) $(DTRACEFLAGS) -G -s skeleton_probes.d $(DTRACEFILES)
+mysqlite_probes.o:
+	$(DTRACE) $(DTRACEFLAGS) -G -s mysqlite_probes.d $(DTRACEFILES)
 
 # End
 

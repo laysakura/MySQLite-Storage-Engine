@@ -1,8 +1,8 @@
-dnl For skeleton MySQL Engine
-AC_INIT(src/ha_skeleton.cc)
+dnl For MySQLite Storage Engine
+AC_INIT(src/ha_mysqlite.cc)
 AC_CONFIG_AUX_DIR(config)
-AM_CONFIG_HEADER(src/skeleton_config.h)
-AM_INIT_AUTOMAKE("ya_skeleton_engine", 0.1)
+AM_CONFIG_HEADER(src/mysqlite_config.h)
+AM_INIT_AUTOMAKE("mysqlite_engine", 0.1)
 
 AC_PROG_CC
 AC_PROG_CXX

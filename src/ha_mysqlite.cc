@@ -14,72 +14,72 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 /**
-  @file ha_example.cc
+  @file ha_mysqlite.cc
 
   @brief
-  The ha_example engine is a stubbed storage engine for example purposes only;
+  The ha_mysqlite engine is a stubbed storage engine for example purposes only;
   it does nothing at this point. Its purpose is to provide a source
   code illustration of how to begin writing new storage engines; see also
-  /storage/example/ha_example.h.
+  ha_mysqlite.h.
 
   @details
-  ha_example will let you create/open/delete tables, but
+  ha_mysqlite will let you create/open/delete tables, but
   nothing further (for example, indexes are not supported nor can data
   be stored in the table). Use this example as a template for
   implementing the same functionality in your own storage engine. You
-  can enable the example storage engine in your build by doing the
+  can enable the mysqlite storage engine in your build by doing the
   following during your build process:<br> ./configure
-  --with-example-storage-engine
+  --with-mysqlite-storage-engine
 
   Once this is done, MySQL will let you create tables with:<br>
-  CREATE TABLE <table name> (...) ENGINE=EXAMPLE;
+  CREATE TABLE <table name> (...) ENGINE=MYSQLITE;
 
-  The example storage engine is set up to use table locks. It
+  The mysqlite storage engine is set up to use table locks. It
   implements an example "SHARE" that is inserted into a hash by table
   name. You can use this to store information of state that any
   example handler object will be able to see when it is using that
   table.
 
-  Please read the object definition in ha_example.h before reading the rest
+  Please read the object definition in ha_mysqlite.h before reading the rest
   of this file.
 
   @note
-  When you create an EXAMPLE table, the MySQL Server creates a table .frm
+  When you create an MYSQLITE table, the MySQL Server creates a table .frm
   (format) file in the database directory, using the table name as the file
   name as is customary with MySQL. No other files are created. To get an idea
   of what occurs, here is an example select that would do a scan of an entire
   table:
 
   @code
-  ha_example::store_lock
-  ha_example::external_lock
-  ha_example::info
-  ha_example::rnd_init
-  ha_example::extra
+  ha_mysqlite::store_lock
+  ha_mysqlite::external_lock
+  ha_mysqlite::info
+  ha_mysqlite::rnd_init
+  ha_mysqlite::extra
   ENUM HA_EXTRA_CACHE        Cache record in HA_rrnd()
-  ha_example::rnd_next
-  ha_example::rnd_next
-  ha_example::rnd_next
-  ha_example::rnd_next
-  ha_example::rnd_next
-  ha_example::rnd_next
-  ha_example::rnd_next
-  ha_example::rnd_next
-  ha_example::rnd_next
-  ha_example::extra
+  ha_mysqlite::rnd_next
+  ha_mysqlite::rnd_next
+  ha_mysqlite::rnd_next
+  ha_mysqlite::rnd_next
+  ha_mysqlite::rnd_next
+  ha_mysqlite::rnd_next
+  ha_mysqlite::rnd_next
+  ha_mysqlite::rnd_next
+  ha_mysqlite::rnd_next
+  ha_mysqlite::extra
   ENUM HA_EXTRA_NO_CACHE     End caching of records (def)
-  ha_example::external_lock
-  ha_example::extra
+  ha_mysqlite::external_lock
+  ha_mysqlite::extra
   ENUM HA_EXTRA_RESET        Reset database to after open
   @endcode
 
-  Here you see that the example storage engine has 9 rows called before
+  Here you see that the mysqlite storage engine has 9 rows called before
   rnd_next signals that it has reached the end of its data. Also note that
   the table in question was already opened; had it not been open, a call to
-  ha_example::open() would also have been necessary. Calls to
-  ha_example::extra() are hints as to what will be occuring to the request.
+  ha_mysqlite::open() would also have been necessary. Calls to
+  ha_mysqlite::extra() are hints as to what will be occuring to the request.
 
-  A Longer Example can be found called the "Skeleton Engine" which can be 
+  A Longer Example can be found called the "MySQLite Storage Engine" which can be 
   found on TangentOrg. It has both an engine and a full build environment
   for building a pluggable storage engine.
 
@@ -89,61 +89,61 @@
 
 #include "sql_priv.h"
 #include "sql_class.h"           // MYSQL_HANDLERTON_INTERFACE_VERSION
-#include "ha_skeleton.h"
+#include "ha_mysqlite.h"
 #include "probes_mysql.h"
 #include "sql_plugin.h"
 
-static handler *example_create_handler(handlerton *hton,
+static handler *mysqlite_create_handler(handlerton *hton,
                                        TABLE_SHARE *table, 
                                        MEM_ROOT *mem_root);
 
-handlerton *example_hton;
+handlerton *mysqlite_hton;
 
 /* Interface to mysqld, to check system tables supported by SE */
-static const char* example_system_database();
-static bool example_is_supported_system_table(const char *db,
+static const char* mysqlite_system_database();
+static bool mysqlite_is_supported_system_table(const char *db,
                                       const char *table_name,
                                       bool is_sql_layer_system_table);
 #ifdef HAVE_PSI_INTERFACE
-static PSI_mutex_key ex_key_mutex_Example_share_mutex;
+static PSI_mutex_key ex_key_mutex_Mysqlite_share_mutex;
 
-static PSI_mutex_info all_example_mutexes[]=
+static PSI_mutex_info all_mysqlite_mutexes[]=
 {
-  { &ex_key_mutex_Example_share_mutex, "Example_share::mutex", 0}
+  { &ex_key_mutex_Mysqlite_share_mutex, "Mysqlite_share::mutex", 0}
 };
 
-static void init_example_psi_keys()
+static void init_mysqlite_psi_keys()
 {
-  const char* category= "example";
+  const char* category= "mysqlite";
   int count;
 
-  count= array_elements(all_example_mutexes);
-  mysql_mutex_register(category, all_example_mutexes, count);
+  count= array_elements(all_mysqlite_mutexes);
+  mysql_mutex_register(category, all_mysqlite_mutexes, count);
 }
 #endif
 
-Example_share::Example_share()
+Mysqlite_share::Mysqlite_share()
 {
   thr_lock_init(&lock);
-  mysql_mutex_init(ex_key_mutex_Example_share_mutex,
+  mysql_mutex_init(ex_key_mutex_Mysqlite_share_mutex,
                    &mutex, MY_MUTEX_INIT_FAST);
 }
 
 
-static int example_init_func(void *p)
+static int mysqlite_init_func(void *p)
 {
-  DBUG_ENTER("example_init_func");
+  DBUG_ENTER("mysqlite_init_func");
 
 #ifdef HAVE_PSI_INTERFACE
-  init_example_psi_keys();
+  init_mysqlite_psi_keys();
 #endif
 
-  example_hton= (handlerton *)p;
-  example_hton->state=                     SHOW_OPTION_YES;
-  example_hton->create=                    example_create_handler;
-  example_hton->flags=                     HTON_CAN_RECREATE;
-  example_hton->system_database=   example_system_database;
-  example_hton->is_supported_system_table= example_is_supported_system_table;
+  mysqlite_hton= (handlerton *)p;
+  mysqlite_hton->state=                     SHOW_OPTION_YES;
+  mysqlite_hton->create=                    mysqlite_create_handler;
+  mysqlite_hton->flags=                     HTON_CAN_RECREATE;
+  mysqlite_hton->system_database=   mysqlite_system_database;
+  mysqlite_hton->is_supported_system_table= mysqlite_is_supported_system_table;
 
   DBUG_RETURN(0);
 }
@@ -157,16 +157,16 @@ static int example_init_func(void *p)
   they are needed to function.
 */
 
-Example_share *ha_example::get_share()
+Mysqlite_share *ha_mysqlite::get_share()
 {
-  Example_share *tmp_share;
+  Mysqlite_share *tmp_share;
 
-  DBUG_ENTER("ha_example::get_share()");
+  DBUG_ENTER("ha_mysqlite::get_share()");
 
   lock_shared_ha_data();
-  if (!(tmp_share= static_cast<Example_share*>(get_ha_share_ptr())))
+  if (!(tmp_share= static_cast<Mysqlite_share*>(get_ha_share_ptr())))
   {
-    tmp_share= new Example_share;
+    tmp_share= new Mysqlite_share;
     if (!tmp_share)
       goto err;
 
@@ -178,14 +178,14 @@ err:
 }
 
 
-static handler* example_create_handler(handlerton *hton,
+static handler* mysqlite_create_handler(handlerton *hton,
                                        TABLE_SHARE *table, 
                                        MEM_ROOT *mem_root)
 {
-  return new (mem_root) ha_example(hton, table);
+  return new (mem_root) ha_mysqlite(hton, table);
 }
 
-ha_example::ha_example(handlerton *hton, TABLE_SHARE *table_arg)
+ha_mysqlite::ha_mysqlite(handlerton *hton, TABLE_SHARE *table_arg)
   :handler(hton, table_arg)
 {}
 
@@ -208,13 +208,13 @@ ha_example::ha_example(handlerton *hton, TABLE_SHARE *table_arg)
   delete_table method in handler.cc
 */
 
-static const char *ha_example_exts[] = {
+static const char *ha_mysqlite_exts[] = {
   NullS
 };
 
-const char **ha_example::bas_ext() const
+const char **ha_mysqlite::bas_ext() const
 {
-  return ha_example_exts;
+  return ha_mysqlite_exts;
 }
 
 /*
@@ -222,10 +222,10 @@ const char **ha_example::bas_ext() const
   system database specific to SE. This interface
   is optional, so every SE need not implement it.
 */
-const char* ha_example_system_database= NULL;
-const char* example_system_database()
+const char* ha_mysqlite_system_database= NULL;
+const char* mysqlite_system_database()
 {
-  return ha_example_system_database;
+  return ha_mysqlite_system_database;
 }
 
 /*
@@ -237,7 +237,7 @@ const char* example_system_database()
 
   This array is optional, so every SE need not implement it.
 */
-static st_system_tablename ha_example_system_tables[]= {
+static st_system_tablename ha_mysqlite_system_tables[]= {
   {(const char*)NULL, (const char*)NULL}
 };
 
@@ -253,7 +253,7 @@ static st_system_tablename ha_example_system_tables[]= {
     @retval TRUE   Given db.table_name is supported system table.
     @retval FALSE  Given db.table_name is not a supported system table.
 */
-static bool example_is_supported_system_table(const char *db,
+static bool mysqlite_is_supported_system_table(const char *db,
                                               const char *table_name,
                                               bool is_sql_layer_system_table)
 {
@@ -264,7 +264,7 @@ static bool example_is_supported_system_table(const char *db,
     return false;
 
   // Check if this is SE layer system tables
-  systab= ha_example_system_tables;
+  systab= ha_mysqlite_system_tables;
   while (systab && systab->db)
   {
     if (systab->db == db &&
@@ -293,9 +293,9 @@ static bool example_is_supported_system_table(const char *db,
   handler::ha_open() in handler.cc
 */
 
-int ha_example::open(const char *name, int mode, uint test_if_locked)
+int ha_mysqlite::open(const char *name, int mode, uint test_if_locked)
 {
-  DBUG_ENTER("ha_example::open");
+  DBUG_ENTER("ha_mysqlite::open");
 
   if (!(share = get_share()))
     DBUG_RETURN(1);
@@ -320,9 +320,9 @@ int ha_example::open(const char *name, int mode, uint test_if_locked)
   sql_base.cc, sql_select.cc and table.cc
 */
 
-int ha_example::close(void)
+int ha_mysqlite::close(void)
 {
-  DBUG_ENTER("ha_example::close");
+  DBUG_ENTER("ha_mysqlite::close");
   DBUG_RETURN(0);
 }
 
@@ -357,9 +357,9 @@ int ha_example::close(void)
   sql_insert.cc, sql_select.cc, sql_table.cc, sql_udf.cc and sql_update.cc
 */
 
-int ha_example::write_row(uchar *buf)
+int ha_mysqlite::write_row(uchar *buf)
 {
-  DBUG_ENTER("ha_example::write_row");
+  DBUG_ENTER("ha_mysqlite::write_row");
   /*
     Example of a successful write_row. We don't store the data
     anywhere; they are thrown away. A real implementation will
@@ -393,10 +393,10 @@ int ha_example::write_row(uchar *buf)
   @see
   sql_select.cc, sql_acl.cc, sql_update.cc and sql_insert.cc
 */
-int ha_example::update_row(const uchar *old_data, uchar *new_data)
+int ha_mysqlite::update_row(const uchar *old_data, uchar *new_data)
 {
 
-  DBUG_ENTER("ha_example::update_row");
+  DBUG_ENTER("ha_mysqlite::update_row");
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
 
@@ -421,9 +421,9 @@ int ha_example::update_row(const uchar *old_data, uchar *new_data)
   sql_acl.cc, sql_udf.cc, sql_delete.cc, sql_insert.cc and sql_select.cc
 */
 
-int ha_example::delete_row(const uchar *buf)
+int ha_mysqlite::delete_row(const uchar *buf)
 {
-  DBUG_ENTER("ha_example::delete_row");
+  DBUG_ENTER("ha_mysqlite::delete_row");
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
 
@@ -435,13 +435,13 @@ int ha_example::delete_row(const uchar *buf)
   index.
 */
 
-int ha_example::index_read_map(uchar *buf, const uchar *key,
+int ha_mysqlite::index_read_map(uchar *buf, const uchar *key,
                                key_part_map keypart_map __attribute__((unused)),
                                enum ha_rkey_function find_flag
                                __attribute__((unused)))
 {
   int rc;
-  DBUG_ENTER("ha_example::index_read");
+  DBUG_ENTER("ha_mysqlite::index_read");
   MYSQL_INDEX_READ_ROW_START(table_share->db.str, table_share->table_name.str);
   rc= HA_ERR_WRONG_COMMAND;
   MYSQL_INDEX_READ_ROW_DONE(rc);
@@ -454,10 +454,10 @@ int ha_example::index_read_map(uchar *buf, const uchar *key,
   Used to read forward through the index.
 */
 
-int ha_example::index_next(uchar *buf)
+int ha_mysqlite::index_next(uchar *buf)
 {
   int rc;
-  DBUG_ENTER("ha_example::index_next");
+  DBUG_ENTER("ha_mysqlite::index_next");
   MYSQL_INDEX_READ_ROW_START(table_share->db.str, table_share->table_name.str);
   rc= HA_ERR_WRONG_COMMAND;
   MYSQL_INDEX_READ_ROW_DONE(rc);
@@ -470,10 +470,10 @@ int ha_example::index_next(uchar *buf)
   Used to read backwards through the index.
 */
 
-int ha_example::index_prev(uchar *buf)
+int ha_mysqlite::index_prev(uchar *buf)
 {
   int rc;
-  DBUG_ENTER("ha_example::index_prev");
+  DBUG_ENTER("ha_mysqlite::index_prev");
   MYSQL_INDEX_READ_ROW_START(table_share->db.str, table_share->table_name.str);
   rc= HA_ERR_WRONG_COMMAND;
   MYSQL_INDEX_READ_ROW_DONE(rc);
@@ -491,10 +491,10 @@ int ha_example::index_prev(uchar *buf)
   @see
   opt_range.cc, opt_sum.cc, sql_handler.cc and sql_select.cc
 */
-int ha_example::index_first(uchar *buf)
+int ha_mysqlite::index_first(uchar *buf)
 {
   int rc;
-  DBUG_ENTER("ha_example::index_first");
+  DBUG_ENTER("ha_mysqlite::index_first");
   MYSQL_INDEX_READ_ROW_START(table_share->db.str, table_share->table_name.str);
   rc= HA_ERR_WRONG_COMMAND;
   MYSQL_INDEX_READ_ROW_DONE(rc);
@@ -512,10 +512,10 @@ int ha_example::index_first(uchar *buf)
   @see
   opt_range.cc, opt_sum.cc, sql_handler.cc and sql_select.cc
 */
-int ha_example::index_last(uchar *buf)
+int ha_mysqlite::index_last(uchar *buf)
 {
   int rc;
-  DBUG_ENTER("ha_example::index_last");
+  DBUG_ENTER("ha_mysqlite::index_last");
   MYSQL_INDEX_READ_ROW_START(table_share->db.str, table_share->table_name.str);
   rc= HA_ERR_WRONG_COMMAND;
   MYSQL_INDEX_READ_ROW_DONE(rc);
@@ -536,15 +536,15 @@ int ha_example::index_last(uchar *buf)
   @see
   filesort.cc, records.cc, sql_handler.cc, sql_select.cc, sql_table.cc and sql_update.cc
 */
-int ha_example::rnd_init(bool scan)
+int ha_mysqlite::rnd_init(bool scan)
 {
-  DBUG_ENTER("ha_example::rnd_init");
+  DBUG_ENTER("ha_mysqlite::rnd_init");
   DBUG_RETURN(0);
 }
 
-int ha_example::rnd_end()
+int ha_mysqlite::rnd_end()
 {
-  DBUG_ENTER("ha_example::rnd_end");
+  DBUG_ENTER("ha_mysqlite::rnd_end");
   DBUG_RETURN(0);
 }
 
@@ -563,10 +563,10 @@ int ha_example::rnd_end()
   @see
   filesort.cc, records.cc, sql_handler.cc, sql_select.cc, sql_table.cc and sql_update.cc
 */
-int ha_example::rnd_next(uchar *buf)
+int ha_mysqlite::rnd_next(uchar *buf)
 {
   int rc;
-  DBUG_ENTER("ha_example::rnd_next");
+  DBUG_ENTER("ha_mysqlite::rnd_next");
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
                        TRUE);
   rc= HA_ERR_END_OF_FILE;
@@ -596,9 +596,9 @@ int ha_example::rnd_next(uchar *buf)
   @see
   filesort.cc, sql_select.cc, sql_delete.cc and sql_update.cc
 */
-void ha_example::position(const uchar *record)
+void ha_mysqlite::position(const uchar *record)
 {
-  DBUG_ENTER("ha_example::position");
+  DBUG_ENTER("ha_mysqlite::position");
   DBUG_VOID_RETURN;
 }
 
@@ -616,10 +616,10 @@ void ha_example::position(const uchar *record)
   @see
   filesort.cc, records.cc, sql_insert.cc, sql_select.cc and sql_update.cc
 */
-int ha_example::rnd_pos(uchar *buf, uchar *pos)
+int ha_mysqlite::rnd_pos(uchar *buf, uchar *pos)
 {
   int rc;
-  DBUG_ENTER("ha_example::rnd_pos");
+  DBUG_ENTER("ha_mysqlite::rnd_pos");
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
                        TRUE);
   rc= HA_ERR_WRONG_COMMAND;
@@ -666,9 +666,9 @@ int ha_example::rnd_pos(uchar *buf, uchar *pos)
   sql_select.cc, sql_show.cc, sql_show.cc, sql_show.cc, sql_show.cc, sql_table.cc,
   sql_union.cc and sql_update.cc
 */
-int ha_example::info(uint flag)
+int ha_mysqlite::info(uint flag)
 {
-  DBUG_ENTER("ha_example::info");
+  DBUG_ENTER("ha_mysqlite::info");
   DBUG_RETURN(0);
 }
 
@@ -682,9 +682,9 @@ int ha_example::info(uint flag)
     @see
   ha_innodb.cc
 */
-int ha_example::extra(enum ha_extra_function operation)
+int ha_mysqlite::extra(enum ha_extra_function operation)
 {
-  DBUG_ENTER("ha_example::extra");
+  DBUG_ENTER("ha_mysqlite::extra");
   DBUG_RETURN(0);
 }
 
@@ -708,9 +708,9 @@ int ha_example::extra(enum ha_extra_function operation)
   JOIN::reinit() in sql_select.cc and
   st_select_lex_unit::exec() in sql_union.cc.
 */
-int ha_example::delete_all_rows()
+int ha_mysqlite::delete_all_rows()
 {
-  DBUG_ENTER("ha_example::delete_all_rows");
+  DBUG_ENTER("ha_mysqlite::delete_all_rows");
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
 
@@ -731,9 +731,9 @@ int ha_example::delete_all_rows()
   Truncate_statement in sql_truncate.cc
   Remarks in handler::truncate.
 */
-int ha_example::truncate()
+int ha_mysqlite::truncate()
 {
-  DBUG_ENTER("ha_example::truncate");
+  DBUG_ENTER("ha_mysqlite::truncate");
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
 
@@ -755,9 +755,9 @@ int ha_example::truncate()
   the section "locking functions for mysql" in lock.cc;
   copy_data_between_tables() in sql_table.cc.
 */
-int ha_example::external_lock(THD *thd, int lock_type)
+int ha_mysqlite::external_lock(THD *thd, int lock_type)
 {
-  DBUG_ENTER("ha_example::external_lock");
+  DBUG_ENTER("ha_mysqlite::external_lock");
   DBUG_RETURN(0);
 }
 
@@ -799,7 +799,7 @@ int ha_example::external_lock(THD *thd, int lock_type)
   @see
   get_lock_data() in lock.cc
 */
-THR_LOCK_DATA **ha_example::store_lock(THD *thd,
+THR_LOCK_DATA **ha_mysqlite::store_lock(THD *thd,
                                        THR_LOCK_DATA **to,
                                        enum thr_lock_type lock_type)
 {
@@ -829,9 +829,9 @@ THR_LOCK_DATA **ha_example::store_lock(THD *thd,
   @see
   delete_table and ha_create_table() in handler.cc
 */
-int ha_example::delete_table(const char *name)
+int ha_mysqlite::delete_table(const char *name)
 {
-  DBUG_ENTER("ha_example::delete_table");
+  DBUG_ENTER("ha_mysqlite::delete_table");
   /* This is not implemented but we want someone to be able that it works. */
   DBUG_RETURN(0);
 }
@@ -851,9 +851,9 @@ int ha_example::delete_table(const char *name)
   @see
   mysql_rename_table() in sql_table.cc
 */
-int ha_example::rename_table(const char * from, const char * to)
+int ha_mysqlite::rename_table(const char * from, const char * to)
 {
-  DBUG_ENTER("ha_example::rename_table ");
+  DBUG_ENTER("ha_mysqlite::rename_table ");
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
 
@@ -871,10 +871,10 @@ int ha_example::rename_table(const char * from, const char * to)
   @see
   check_quick_keys() in opt_range.cc
 */
-ha_rows ha_example::records_in_range(uint inx, key_range *min_key,
+ha_rows ha_mysqlite::records_in_range(uint inx, key_range *min_key,
                                      key_range *max_key)
 {
-  DBUG_ENTER("ha_example::records_in_range");
+  DBUG_ENTER("ha_mysqlite::records_in_range");
   DBUG_RETURN(10);                         // low number to force index usage
 }
 
@@ -898,10 +898,10 @@ ha_rows ha_example::records_in_range(uint inx, key_range *min_key,
   ha_create_table() in handle.cc
 */
 
-int ha_example::create(const char *name, TABLE *table_arg,
+int ha_mysqlite::create(const char *name, TABLE *table_arg,
                        HA_CREATE_INFO *create_info)
 {
-  DBUG_ENTER("ha_example::create");
+  DBUG_ENTER("ha_mysqlite::create");
   /*
     This is not implemented but we want someone to be able to see that it
     works.
@@ -910,7 +910,7 @@ int ha_example::create(const char *name, TABLE *table_arg,
 }
 
 
-struct st_mysql_storage_engine example_storage_engine=
+struct st_mysql_storage_engine mysqlite_storage_engine=
 { MYSQL_HANDLERTON_INTERFACE_VERSION };
 
 static ulong srv_enum_var= 0;
@@ -949,14 +949,14 @@ static MYSQL_SYSVAR_ULONG(
   1000,
   0);
 
-static struct st_mysql_sys_var* example_system_variables[]= {
+static struct st_mysql_sys_var* mysqlite_system_variables[]= {
   MYSQL_SYSVAR(enum_var),
   MYSQL_SYSVAR(ulong_var),
   NULL
 };
 
-// this is an example of SHOW_FUNC and of my_snprintf() service
-static int show_func_example(MYSQL_THD thd, struct st_mysql_show_var *var,
+// this is an mysqlite of SHOW_FUNC and of my_snprintf() service
+static int show_func_mysqlite(MYSQL_THD thd, struct st_mysql_show_var *var,
                              char *buf)
 {
   var->type= SHOW_CHAR;
@@ -969,23 +969,23 @@ static int show_func_example(MYSQL_THD thd, struct st_mysql_show_var *var,
 
 static struct st_mysql_show_var func_status[]=
 {
-  {"example_func_example",  (char *)show_func_example, SHOW_FUNC},
+  {"mysqlite_func_mysqlite",  (char *)show_func_mysqlite, SHOW_FUNC},
   {0,0,SHOW_UNDEF}
 };
 
-mysql_declare_plugin(example)
+mysql_declare_plugin(mysqlite)
 {
   MYSQL_STORAGE_ENGINE_PLUGIN,
-  &example_storage_engine,
-  "YA_SKELETON",
+  &mysqlite_storage_engine,
+  "MYSQLITE",
   "Sho Nakatani",
-  "Yet Another Skeleton Storage Engine",
+  "MySQLite Storage Engine",
   PLUGIN_LICENSE_GPL,
-  example_init_func,                            /* Plugin Init */
+  mysqlite_init_func,                            /* Plugin Init */
   NULL,                                         /* Plugin Deinit */
   0x0001 /* 0.1 */,
   func_status,                                  /* status variables */
-  example_system_variables,                     /* system variables */
+  mysqlite_system_variables,                     /* system variables */
   NULL,                                         /* config options */
   0,                                            /* flags */
 }

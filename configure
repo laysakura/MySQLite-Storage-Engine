@@ -572,7 +572,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="src/ha_skeleton.cc"
+ac_unique_file="src/ha_mysqlite.cc"
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -2395,7 +2395,7 @@ ac_config_sub="$SHELL $ac_aux_dir/config.sub"  # Please don't use this var.
 ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 
 
-ac_config_headers="$ac_config_headers src/skeleton_config.h"
+ac_config_headers="$ac_config_headers src/mysqlite_config.h"
 
 am__api_version='1.11'
 
@@ -2834,7 +2834,7 @@ fi
 
 
 # Define the identity of the package.
- PACKAGE="ya_skeleton_engine"
+ PACKAGE="mysqlite_engine"
  VERSION=0.1
 
 
@@ -16370,7 +16370,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
-    "src/skeleton_config.h") CONFIG_HEADERS="$CONFIG_HEADERS src/skeleton_config.h" ;;
+    "src/mysqlite_config.h") CONFIG_HEADERS="$CONFIG_HEADERS src/mysqlite_config.h" ;;
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
