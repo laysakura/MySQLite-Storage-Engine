@@ -1,0 +1,13 @@
+*~
+Makefile
+config.log
+config.status
+libtool
+src/.deps/
+src/.libs/
+src/Makefile
+src/libmysqlite_engine.la
+src/libmysqlite_engine_la-ha_mysqlite.lo
+src/libmysqlite_engine_la-ha_mysqlite.o
+src/mysqlite_config.h
+src/stamp-h1
