@@ -93,6 +93,18 @@
 #include "probes_mysql.h"
 #include "sql_plugin.h"
 
+#define log(fmt, ...)                                                   \
+  do {                                                                  \
+    time_t _t = time(NULL);                                             \
+    tm _tm;                                                             \
+    localtime_r(&_t, &_tm);                                             \
+    fprintf(stderr,                                                     \
+            "%02d%02d%02d %02d:%02d:%02d ha_mysqlite: " __FILE__ ":%d: " fmt, \
+            _tm.tm_year % 100, _tm.tm_mon + 1, _tm.tm_mday,             \
+            _tm.tm_hour, _tm.tm_min, _tm.tm_sec,                        \
+            __LINE__, ## __VA_ARGS__);                                  \
+  } while (0)
+
 static handler *mysqlite_create_handler(handlerton *hton,
                                        TABLE_SHARE *table, 
                                        MEM_ROOT *mem_root);
@@ -974,6 +986,33 @@ static struct st_mysql_show_var func_status[]=
 };
 
 /*
+** Utils
+*/
+
+/*
+** @return
+** NULL: Error. `message' is set.
+*/
+static inline FILE *open_sqlite_db(char *path, char *message)
+{
+  struct stat st;
+  if (stat(path, &st) == 0) {
+    // File exists at path
+    FILE *f = fopen(path, "r");
+    if (!f) {
+      sprintf(message, "Permission denied: Cannot open %s in read mode.",
+              path);
+      return NULL;
+    }
+    return f;
+  } else {
+    // File does not exist at path
+    strcpy(message, "Creating new SQLite DB: NOT IMPLEMENTED YET");
+    return NULL;
+  }
+}
+
+/*
 ** やりたいこと
 ** 1. 要求されたsqlite dbファイルが存在しない時: 作成する
 ** 2. 存在する時: テーブル定義を読み取って.frmをupdateする
@@ -995,19 +1034,30 @@ my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
   }
   args->arg_type[0] = STRING_RESULT;
   args->maybe_null[0] = 0;
+  initid->maybe_null = 0;
 
-  initid->maybe_null = 0;  /* select sqlite_db() はNULLを返さない! */
+  char *path = args->args[0];
+  initid->ptr = (char *)open_sqlite_db(path, message);
+  if (!initid->ptr) return 1;
 
   return 0;
 }
 
 void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
 {
+  FILE *f = (FILE *)initid->ptr;
+  DBUG_ASSERT(f);
+  fclose(f);
 }
 
 long long sqlite_db(UDF_INIT *initid __attribute__((unused)), UDF_ARGS *args,
                     char *is_null, char *error)
 {
+  FILE *f = (FILE *)initid->ptr;
+  char s[512];
+  fread(s, 1, 512, f);
+  log("sqlite header: %s\n", s);
+
   *is_null = 0;
   return 777;
 }
