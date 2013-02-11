@@ -955,7 +955,7 @@ static struct st_mysql_sys_var* mysqlite_system_variables[]= {
   NULL
 };
 
-// this is an mysqlite of SHOW_FUNC and of my_snprintf() service
+// this is an example of SHOW_FUNC and of my_snprintf() service
 static int show_func_mysqlite(MYSQL_THD thd, struct st_mysql_show_var *var,
                              char *buf)
 {
@@ -972,6 +972,45 @@ static struct st_mysql_show_var func_status[]=
   {"mysqlite_func_mysqlite",  (char *)show_func_mysqlite, SHOW_FUNC},
   {0,0,SHOW_UNDEF}
 };
+
+/*
+** やりたいこと
+** 1. 要求されたsqlite dbファイルが存在しない時: 作成する
+** 2. 存在する時: テーブル定義を読み取って.frmをupdateする
+**
+** @example
+** -- ex1:
+** select sqlite_db('/path/to/foo.sqlite');  -- foo.sqliteは存在しない
+** create table T0 (...) engine=mysqlite;    -- foo.sqliteができ，その中にT0というテーブルができる
+**
+** -- ex2:
+** select sqlite_db('/path/to/bar.sqlite');  -- bar.sqliteは存在し，既にS0,S1というテーブルもある．
+**     -- この時点で現在useしてるMySQL側のDBに，S0,S1というテーブルの定義{S0,S1}.frmもできる．
+*/
+my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
+{
+  if (args->arg_count == 0 || args->arg_count >= 2) {
+    strcpy(message, "sqlite_schema('/path/to/sqlite_db'): argument error");
+    return 1;
+  }
+  args->arg_type[0] = STRING_RESULT;
+  args->maybe_null[0] = 0;
+
+  initid->maybe_null = 0;  /* select sqlite_db() はNULLを返さない! */
+
+  return 0;
+}
+
+void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
+{
+}
+
+long long sqlite_db(UDF_INIT *initid __attribute__((unused)), UDF_ARGS *args,
+                    char *is_null, char *error)
+{
+  *is_null = 0;
+  return 777;
+}
 
 mysql_declare_plugin(mysqlite)
 {
