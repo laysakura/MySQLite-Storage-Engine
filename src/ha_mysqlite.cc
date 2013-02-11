@@ -988,27 +988,56 @@ static struct st_mysql_show_var func_status[]=
 /*
 ** Utils
 */
+#include "sqlite_format.h"
+
+/*
+**
+*/
+static inline bool has_sqlite3_header(FILE *f)
+{
+  char s[SQLITE3_HEADER_SIZE];
+  long prev_offset = ftell(f);
+  rewind(f);
+  if (fread(s, 1, SQLITE3_HEADER_SIZE, f) != SQLITE3_HEADER_SIZE) {
+    log("fread() fails\n");
+    return false;
+  }
+  if (fseek(f, prev_offset, SEEK_SET) == -1) {
+    perror("has_sqlite3_header");
+    return false;
+  }
+  return strcmp(s, SQLITE3_HEADER) == 0;
+}
 
 /*
 ** @return
 ** NULL: Error. `message' is set.
 */
-static inline FILE *open_sqlite_db(char *path, char *message)
+static inline FILE *open_sqlite_db(char *path,
+                                   /* out */
+                                   bool *is_existing_db, char *message)
 {
   struct stat st;
   if (stat(path, &st) == 0) {
-    // File exists at path
+    *is_existing_db = true;
     FILE *f = fopen(path, "r");
     if (!f) {
-      sprintf(message, "Permission denied: Cannot open %s in read mode.",
-              path);
+      sprintf(message, "Permission denied: Cannot open %s in read mode.", path);
+      return NULL;
+    }
+    if (!has_sqlite3_header(f)) {
+      sprintf(message, "Format error: %s does not seem SQLite3 database.", path);
       return NULL;
     }
     return f;
   } else {
-    // File does not exist at path
-    strcpy(message, "Creating new SQLite DB: NOT IMPLEMENTED YET");
-    return NULL;
+    *is_existing_db = false;
+    FILE *f = fopen(path, "w+");
+    if (!f) {
+      sprintf(message, "Permission denied: Cannot create %s.", path);
+      return NULL;
+    }
+    return f;
   }
 }
 
@@ -1025,6 +1054,11 @@ static inline FILE *open_sqlite_db(char *path, char *message)
 ** -- ex2:
 ** select sqlite_db('/path/to/bar.sqlite');  -- bar.sqliteは存在し，既にS0,S1というテーブルもある．
 **     -- この時点で現在useしてるMySQL側のDBに，S0,S1というテーブルの定義{S0,S1}.frmもできる．
+**
+** @param (char *)initid->ptr: Points to a byte where
+**   0 indicates new DB is created and
+**   1 indicates existing DB is read.
+** @param (void *)initid->extension: File descriptor to DB.
 */
 my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
 {
@@ -1034,32 +1068,41 @@ my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
   }
   args->arg_type[0] = STRING_RESULT;
   args->maybe_null[0] = 0;
-  initid->maybe_null = 0;
+  initid->maybe_null = 1;
 
   char *path = args->args[0];
-  initid->ptr = (char *)open_sqlite_db(path, message);
-  if (!initid->ptr) return 1;
+  bool *is_existing_db = (bool *)malloc(1);
+  initid->extension = open_sqlite_db(path, is_existing_db, message);
+  if (!initid->extension) return 1;
 
+  initid->ptr = (char *)is_existing_db;
   return 0;
 }
 
 void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
 {
-  FILE *f = (FILE *)initid->ptr;
+  FILE *f = (FILE *)initid->extension;
   DBUG_ASSERT(f);
   fclose(f);
+
+  bool *is_existing_db = (bool *)initid->ptr;
+  free(is_existing_db);
 }
 
+/*
+** @return
+** 0: Creating new DB in write mode.
+** 1: Opening existing DB in read mode.
+*/
 long long sqlite_db(UDF_INIT *initid __attribute__((unused)), UDF_ARGS *args,
                     char *is_null, char *error)
 {
-  FILE *f = (FILE *)initid->ptr;
-  char s[512];
-  fread(s, 1, 512, f);
-  log("sqlite header: %s\n", s);
+  FILE *f_db = (FILE *)initid->extension;
+  bool *is_existing_db = (bool *)initid->ptr;
 
   *is_null = 0;
-  return 777;
+  log("*is_existing_db = %d\n", *is_existing_db);
+  return *is_existing_db;
 }
 
 mysql_declare_plugin(mysqlite)
