@@ -13,13 +13,13 @@ noinst_HEADERS = ha_mysqlite.h \
 
 lib_LTLIBRARIES = libmysqlite_engine.la
 libmysqlite_engine_la_SOURCES = ha_mysqlite.cc
-libmysqlite_engine_la_LIBADD = $(MYSQL_SRC)/libservices/libmysqlservices.a
+libmysqlite_engine_la_LIBADD = -lmysqlservices $(MYSQL_SRC)/libmysql/libmysqlclient.a
 
 if HAVE_DTRACE
   libmysqlite_engine_la_LIBADD += mysqlite_probes.o
 endif
 
-libmysqlite_engine_la_LDFLAGS =	-module
+libmysqlite_engine_la_LDFLAGS =	-module -L$(MYSQL_SRC)/libservices/
 libmysqlite_engine_la_CFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
 libmysqlite_engine_la_CXXFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
 
