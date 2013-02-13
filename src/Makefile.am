@@ -12,7 +12,7 @@ noinst_HEADERS = ha_mysqlite.h \
 		 mysqlite_probes.h
 
 lib_LTLIBRARIES = libmysqlite_engine.la
-libmysqlite_engine_la_SOURCES = ha_mysqlite.cc
+libmysqlite_engine_la_SOURCES = ha_mysqlite.cc udf_sqlite_db.cc
 libmysqlite_engine_la_LIBADD = -lmysqlservices $(MYSQL_SRC)/libmysql/libmysqlclient.a
 
 if HAVE_DTRACE

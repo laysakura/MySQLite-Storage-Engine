@@ -31,6 +31,10 @@
   /sql/handler.h and ha_mysqlite.cc
 */
 
+#ifndef _SQLITE_FORMAT_H_
+#define _SQLITE_FORMAT_H_
+
+
 #include "my_global.h"                   /* ulonglong */
 #include "thr_lock.h"                    /* THR_LOCK, THR_LOCK_DATA */
 #include "handler.h"                     /* handler */
@@ -265,3 +269,6 @@ extern "C" {
   long long sqlite_db(UDF_INIT *initid, UDF_ARGS *args, char *is_null,
                       char *error);
 }
+
+
+#endif /* _SQLITE_FORMAT_H_ */

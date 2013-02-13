@@ -1,4 +1,7 @@
 *~
+*.gch
+*.lo
+*.o
 Makefile
 config.log
 config.status
