@@ -263,12 +263,5 @@ public:
                              enum thr_lock_type lock_type);     ///< required
 };
 
-extern "C" {
-  my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-  void sqlite_db_deinit(UDF_INIT *initid);
-  long long sqlite_db(UDF_INIT *initid, UDF_ARGS *args, char *is_null,
-                      char *error);
-}
-
 
 #endif /* _SQLITE_FORMAT_H_ */

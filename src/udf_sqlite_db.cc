@@ -1,5 +1,5 @@
 using namespace std;
-#include <list>
+#include <vector>
 #include <string>
 
 #include <sql_priv.h>
@@ -62,7 +62,7 @@ static inline FILE *open_sqlite_db(char *path,
 
 bool copy_sqlite_ddls(FILE *f_db,
                       /* out */
-                      list<string> &ddls)
+                      vector<string> &ddls)
 {
   // TODO: Somehow vector.push_back fails in runtime
   // saying "undefined symbol: ..."
@@ -86,11 +86,11 @@ bool dup_table_schema(FILE *f_db)
   }
 
   { // Duplicate SQLite DDLs to MySQL
-    list<string> ddls;
+    vector<string> ddls;
     if (!copy_sqlite_ddls(f_db, ddls))
       goto err_ret;
 
-    for (list<string>::iterator it = ddls.begin(); it != ddls.end(); ++it) {
+    for (vector<string>::iterator it = ddls.begin(); it != ddls.end(); ++it) {
       if (mysql_query(conn, it->c_str())) {
         log("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         goto err_ret;

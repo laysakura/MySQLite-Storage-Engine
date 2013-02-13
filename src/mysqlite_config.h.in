@@ -6,6 +6,9 @@
 /* Enables DTRACE Support */
 #undef HAVE_DTRACE
 
+/* Enables GoogleTest Support */
+#undef HAVE_GTEST
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
