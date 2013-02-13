@@ -613,6 +613,8 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
+GTEST_SRC
+HAVE_GTEST
 MYSQL_SRC
 MYSQL_INC
 HAVE_DTRACE_FALSE
@@ -620,6 +622,8 @@ HAVE_DTRACE_TRUE
 HAVE_DTRACE
 DTRACEFLAGS
 DTRACE
+HAVE_GTEST_FALSE
+HAVE_GTEST_TRUE
 CXXCPP
 OTOOL64
 OTOOL
@@ -747,6 +751,7 @@ with_sysroot
 enable_libtool_lock
 enable_dtrace
 with_mysql
+with_gtest
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1398,6 +1403,7 @@ Optional Packages:
                         (or the compiler's sysroot if not specified).
   --with-mysql[=mysql src directory]
                         Source requir to build engine.
+  --with-gtest            GoogleTest path (ex: /path/to/gtest-1.6.0)
 
 Some influential environment variables:
   CC          C compiler command
@@ -15045,6 +15051,16 @@ LIBTOOL="$LIBTOOL --preserve-dup-deps"
 
 
 
+ if  test -n "$GTEST_SRC" ; then
+  HAVE_GTEST_TRUE=
+  HAVE_GTEST_FALSE='#'
+else
+  HAVE_GTEST_TRUE='#'
+  HAVE_GTEST_FALSE=
+fi
+
+
+
 # Check whether --enable-dtrace was given.
 if test "${enable_dtrace+set}" = set; then :
   enableval=$enable_dtrace;
@@ -15140,10 +15156,32 @@ fi
 
 
 
+
+
+# Check whether --with-gtest was given.
+if test "${with_gtest+set}" = set; then :
+  withval=$with_gtest;
+
+$as_echo "#define HAVE_GTEST 1" >>confdefs.h
+
+    GTEST_SRC="$withval"
+
+
+else
+
+    as_fn_error $? "\"--with-gtest is necessary (to-be-fixed)\"" "$LINENO" 5
+    GTEST_SRC=""
+
+fi
+
+
+
+
 # We only support GCC and Sun's forte at the moment
 if test "$GCC" = "yes"
 then
-  CXXFLAGS="$CXXFLAGS -fno-implicit-templates -fno-exceptions -fno-rtti"
+  CFLAGS="$CFLAGS -Wall"
+  CXXFLAGS="$CXXFLAGS -Wall"
 else
   CFLAGS="-Xa -xstrconst -mt -D_FORTEC_ -fast -m64"
   CXXFLAGS="$CXXFLAGS -noex -mt -D_FORTEC_ -fast -m64"
@@ -15383,6 +15421,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${am__fastdepCXX_TRUE}" && test -z "${am__fastdepCXX_FALSE}"; then
   as_fn_error $? "conditional \"am__fastdepCXX\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAVE_GTEST_TRUE}" && test -z "${HAVE_GTEST_FALSE}"; then
+  as_fn_error $? "conditional \"HAVE_GTEST\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_DTRACE_TRUE}" && test -z "${HAVE_DTRACE_FALSE}"; then

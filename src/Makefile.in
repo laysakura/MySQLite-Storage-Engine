@@ -18,6 +18,7 @@
 # Used to build Makefile.in
 
 
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -38,11 +39,13 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @HAVE_DTRACE_TRUE@am__append_1 = mysqlite_probes.o
+noinst_PROGRAMS = utilsTest$(EXEEXT)
 subdir = src
 DIST_COMMON = $(noinst_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/mysqlite_config.h.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/ac_mysql.m4 \
+	$(top_srcdir)/config/ac_gtest.m4 \
 	$(top_srcdir)/config/dtrace.m4 $(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -83,6 +86,12 @@ libmysqlite_engine_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(libmysqlite_engine_la_CXXFLAGS) $(CXXFLAGS) \
 	$(libmysqlite_engine_la_LDFLAGS) $(LDFLAGS) -o $@
+PROGRAMS = $(noinst_PROGRAMS)
+am_utilsTest_OBJECTS = utilsTest.$(OBJEXT)
+utilsTest_OBJECTS = $(am_utilsTest_OBJECTS)
+am__DEPENDENCIES_1 = $(GTEST_SRC)/src/gtest_main.o \
+	$(GTEST_SRC)/src/gtest-all.o
+utilsTest_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -96,8 +105,8 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libmysqlite_engine_la_SOURCES)
-DIST_SOURCES = $(libmysqlite_engine_la_SOURCES)
+SOURCES = $(libmysqlite_engine_la_SOURCES) $(utilsTest_SOURCES)
+DIST_SOURCES = $(libmysqlite_engine_la_SOURCES) $(utilsTest_SOURCES)
 HEADERS = $(noinst_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -133,7 +142,9 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FGREP = @FGREP@
 GREP = @GREP@
+GTEST_SRC = @GTEST_SRC@
 HAVE_DTRACE = @HAVE_DTRACE@
+HAVE_GTEST = @HAVE_GTEST@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -226,7 +237,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 EXTRA_DIST = ha_mysqlite.h CMakeFiles.txt plug.in mysqlite_probes.d
-INCLUDES = $(MYSQL_INC)
+INCLUDES = $(MYSQL_INC) -I$(GTEST_SRC) -I$(GTEST_SRC)/include
 DTRACEFILES = .libs/libmysqlite_engine_la-ha_mysqlite.o
 noinst_HEADERS = ha_mysqlite.h \
 		 mysqlite_probes.h
@@ -238,6 +249,9 @@ libmysqlite_engine_la_LIBADD = -lmysqlservices \
 libmysqlite_engine_la_LDFLAGS = -module -L$(MYSQL_SRC)/libservices/
 libmysqlite_engine_la_CFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
 libmysqlite_engine_la_CXXFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
+gtest_ldadd = $(GTEST_SRC)/src/gtest_main.o $(GTEST_SRC)/src/gtest-all.o -lpthread
+utilsTest_SOURCES = utilsTest.cc
+utilsTest_LDADD = $(gtest_ldadd)
 all: mysqlite_config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -324,6 +338,18 @@ clean-libLTLIBRARIES:
 libmysqlite_engine.la: $(libmysqlite_engine_la_OBJECTS) $(libmysqlite_engine_la_DEPENDENCIES) 
 	$(libmysqlite_engine_la_LINK) -rpath $(libdir) $(libmysqlite_engine_la_OBJECTS) $(libmysqlite_engine_la_LIBADD) $(LIBS)
 
+clean-noinstPROGRAMS:
+	@list='$(noinst_PROGRAMS)'; test -n "$$list" || exit 0; \
+	echo " rm -f" $$list; \
+	rm -f $$list || exit $$?; \
+	test -n "$(EXEEXT)" || exit 0; \
+	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
+	echo " rm -f" $$list; \
+	rm -f $$list
+utilsTest$(EXEEXT): $(utilsTest_OBJECTS) $(utilsTest_DEPENDENCIES) 
+	@rm -f utilsTest$(EXEEXT)
+	$(CXXLINK) $(utilsTest_OBJECTS) $(utilsTest_LDADD) $(LIBS)
+
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -332,6 +358,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmysqlite_engine_la-ha_mysqlite.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmysqlite_engine_la-udf_sqlite_db.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utilsTest.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -458,7 +485,8 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(LTLIBRARIES) $(HEADERS) mysqlite_config.h
+all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(HEADERS) \
+		mysqlite_config.h
 installdirs:
 	for dir in "$(DESTDIR)$(libdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
@@ -491,7 +519,7 @@ maintainer-clean-generic:
 clean: clean-am
 
 clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
-	mostlyclean-am
+	clean-noinstPROGRAMS mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -562,8 +590,8 @@ uninstall-am: uninstall-libLTLIBRARIES
 .MAKE: all install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-libLTLIBRARIES clean-libtool ctags distclean \
-	distclean-compile distclean-generic distclean-hdr \
+	clean-libLTLIBRARIES clean-libtool clean-noinstPROGRAMS ctags \
+	distclean distclean-compile distclean-generic distclean-hdr \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
 	html-am info info-am install install-am install-data \
 	install-data-am install-dvi install-dvi-am install-exec \
@@ -576,6 +604,7 @@ uninstall-am: uninstall-libLTLIBRARIES
 	tags uninstall uninstall-am uninstall-libLTLIBRARIES
 
 
+# dtrace
 mysqlite_probes.h: mysqlite_probes.d
 	$(DTRACE) $(DTRACEFLAGS) -h -s mysqlite_probes.d
 	mv mysqlite_probes.h mysqlite_probes.h.bak

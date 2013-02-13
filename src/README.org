@@ -1,0 +1,2 @@
+* Unit test
+  *Current limitation: You have to have GoogleTest and specify path by ./configure --with-gtest=/path*

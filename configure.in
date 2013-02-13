@@ -13,6 +13,7 @@ LIBTOOL="$LIBTOOL --preserve-dup-deps"
 AC_SUBST(LIBTOOL)dnl
 
 sinclude(config/ac_mysql.m4)
+sinclude(config/ac_gtest.m4)
 sinclude(config/ac_system.m4)
 sinclude(config/dtrace.m4)
 
@@ -20,10 +21,14 @@ MYSQL_SRC_TEST
 AC_SUBST(MYSQL_INC)
 AC_SUBST(MYSQL_SRC)
 
+GTEST_SRC_TEST
+AC_SUBST(GTEST_SRC)
+
 # We only support GCC and Sun's forte at the moment
 if test "$GCC" = "yes"
 then
-  CXXFLAGS="$CXXFLAGS -fno-implicit-templates -fno-exceptions -fno-rtti"
+  CFLAGS="$CFLAGS -Wall"
+  CXXFLAGS="$CXXFLAGS -Wall"
 else
   CFLAGS="-Xa -xstrconst -mt -D_FORTEC_ -fast -m64"
   CXXFLAGS="$CXXFLAGS -noex -mt -D_FORTEC_ -fast -m64"
