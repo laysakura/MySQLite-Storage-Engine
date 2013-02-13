@@ -985,6 +985,32 @@ static struct st_mysql_show_var func_status[]=
   {0,0,SHOW_UNDEF}
 };
 
+mysql_declare_plugin(mysqlite)
+{
+  MYSQL_STORAGE_ENGINE_PLUGIN,
+  &mysqlite_storage_engine,
+  "MYSQLITE",
+  "Sho Nakatani",
+  "MySQLite Storage Engine",
+  PLUGIN_LICENSE_GPL,
+  mysqlite_init_func,                            /* Plugin Init */
+  NULL,                                         /* Plugin Deinit */
+  0x0001 /* 0.1 */,
+  func_status,                                  /* status variables */
+  mysqlite_system_variables,                     /* system variables */
+  NULL,                                         /* config options */
+  0,                                            /* flags */
+}
+mysql_declare_plugin_end;
+
+
+/*************************************************
+* MySQLite
+/************************************************/
+using namespace std;
+#include <list>
+#include <string>
+
 /*
 ** Utils
 */
@@ -1010,6 +1036,8 @@ static inline bool has_sqlite3_header(FILE *f)
 }
 
 /*
+** pathをopenし，もし存在すればそれがSQLite DBとしてvalidなものかをチェックする
+**
 ** @return
 ** NULL: Error. `message' is set.
 */
@@ -1041,7 +1069,54 @@ static inline FILE *open_sqlite_db(char *path,
   }
 }
 
+bool copy_sqlite_ddls(FILE *f_db,
+                      /* out */
+                      list<string> &ddls)
+{
+  // TODO: Somehow vector.push_back fails in runtime
+  // saying "undefined symbol: ..."
+  ddls.push_back("create table hhh02_table1_ddl_short_t1 (c1 INT)");
+  return true;
+}
+
+#include <mysql.h>
+bool dup_table_schema(FILE *f_db)
+{
+  MYSQL *conn;
+  if (!(conn = mysql_init(NULL))) {
+    log("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+    goto err_ret;
+  }
+  // TODO: BUG: Connection should not be newly created.
+  // By reusing connection, these 'root', 'mysql.sock' things will diminish.
+  if (conn != mysql_real_connect(conn, "localhost", "root", "", "test", 0, "/tmp/mysql.sock", 0)) {
+    log("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+    goto err_ret;
+  }
+
+  { // Duplicate SQLite DDLs to MySQL
+    list<string> ddls;
+    if (!copy_sqlite_ddls(f_db, ddls))
+      goto err_ret;
+
+    for (list<string>::iterator it = ddls.begin(); it != ddls.end(); ++it) {
+      if (mysql_query(conn, it->c_str())) {
+        log("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+        goto err_ret;
+      }
+    }
+  }
+  mysql_close(conn);
+  return true;
+
+err_ret:
+  mysql_close(conn);
+  return false;
+}
+
 /*
+** この関数(sqlite_db_init)は，SQLite DBを開き，validityのチェックを行うところまで．
+**
 ** やりたいこと
 ** 1. 要求されたsqlite dbファイルが存在しない時: 作成する
 ** 2. 存在する時: テーブル定義を読み取って.frmをupdateする
@@ -1090,6 +1165,8 @@ void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
 }
 
 /*
+** sqlite db(validityチェック済み)が存在すれば，そのtable schemaを見てCREATE TABLEを発行
+**
 ** @return
 ** 0: Creating new DB in write mode.
 ** 1: Opening existing DB in read mode.
@@ -1098,27 +1175,12 @@ long long sqlite_db(UDF_INIT *initid __attribute__((unused)), UDF_ARGS *args,
                     char *is_null, char *error)
 {
   FILE *f_db = (FILE *)initid->extension;
-  bool *is_existing_db = (bool *)initid->ptr;
+  bool is_existing_db = *((bool *)initid->ptr);
+
+  if (is_existing_db) {
+    dup_table_schema(f_db);
+  }
 
   *is_null = 0;
-  log("*is_existing_db = %d\n", *is_existing_db);
-  return *is_existing_db;
+  return is_existing_db;
 }
-
-mysql_declare_plugin(mysqlite)
-{
-  MYSQL_STORAGE_ENGINE_PLUGIN,
-  &mysqlite_storage_engine,
-  "MYSQLITE",
-  "Sho Nakatani",
-  "MySQLite Storage Engine",
-  PLUGIN_LICENSE_GPL,
-  mysqlite_init_func,                            /* Plugin Init */
-  NULL,                                         /* Plugin Deinit */
-  0x0001 /* 0.1 */,
-  func_status,                                  /* status variables */
-  mysqlite_system_variables,                     /* system variables */
-  NULL,                                         /* config options */
-  0,                                            /* flags */
-}
-mysql_declare_plugin_end;
