@@ -16,6 +16,9 @@
 #define DBHDR_PGSIZE_OFFSET 16
 #define DBHDR_PGSIZE_LEN 2
 
+#define BTREEHDR_SIZE_LEAF 8
+#define BTREEHDR_SIZE_INTERIOR 12
+
 #define BTREEHDR_BTREETYPE_OFFSET 0
 
 #define BTREEHDR_FREEBLOCKOFST_OFFSET 1
@@ -31,6 +34,8 @@
 
 #define BTREEHDR_RIGHTMOSTPG_OFFSET 8
 #define BTREEHDR_RIGHTMOSTPG_LEN 4
+
+#define CPA_ELEM_LEN 2
 
 #define SQLITE3_VARINT_MAXLEN 9
 
@@ -260,15 +265,30 @@ protected:
     }
     return is_valid;
   }
-
 public:
+
+protected:
+  /*
+  ** @param i  0-origin index.
+  **
+  ** @return  0 if i is out of larger than the actual number of cells.
+  */
+  u16 get_ith_cell_offset(u16 i) {
+    if (i >= get_n_cell()) return 0;
+
+    // cpa stands for Cell Pointer Array
+    btree_page_type type = get_btree_type();
+    u16 cpa_start = (type == INDEX_LEAF || type == TABLE_LEAF) ?
+      BTREEHDR_SIZE_LEAF : BTREEHDR_SIZE_INTERIOR;
+    return u8s_to_val<u16>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
+  }
+public:
+
   // Page management
   bool read() const {
     return Page::read() && is_valid_hdr();
   }
 
-protected:
-  virtual u32 get_ith_cell_offset() = 0;
 };
 
 /*
