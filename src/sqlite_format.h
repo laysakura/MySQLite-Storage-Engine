@@ -16,10 +16,25 @@
 #define DBHDR_PGSIZE_OFFSET 16
 #define DBHDR_PGSIZE_LEN 2
 
+#define BTREEHDR_BTREETYPE_OFFSET 0
+
+#define BTREEHDR_FREEBLOCKOFST_OFFSET 1
+#define BTREEHDR_FREEBLOCKOFST_LEN 2
+
+#define BTREEHDR_NCELL_OFFSET 3
+#define BTREEHDR_NCELL_LEN 2
+
+#define BTREEHDR_CELLCONTENTAREAOFST_OFFSET 5
+#define BTREEHDR_CELLCONTENTAREAOFST_LEN 2
+
+#define BTREEHDR_NFRAGMENTATION_OFFSET 7
+
+#define BTREEHDR_RIGHTMOSTPG_OFFSET 8
+#define BTREEHDR_RIGHTMOSTPG_LEN 4
+
 #define SQLITE3_VARINT_MAXLEN 9
 
 typedef enum btree_page_type {
-  INVALID_BTREE_PAGE = 0,
   INDEX_INTERIOR     = 2,
   TABLE_INTERIOR     = 5,
   INDEX_LEAF         = 10,
@@ -110,6 +125,7 @@ public:
   DbHeader(FILE * const f_db)
     : f_db(f_db)
   {
+    assert(f_db);
     assert(hdr_data = (u8 *)malloc(DB_HEADER_SIZE));
   }
   ~DbHeader() {
@@ -120,8 +136,8 @@ public:
     return mysqlite_fread(hdr_data, 0, DB_HEADER_SIZE, f_db);
   }
 
-  u32 get_pg_size() const {
-    return u8s_to_val<u32>(&hdr_data[DBHDR_PGSIZE_OFFSET], DBHDR_PGSIZE_LEN);
+  u16 get_pg_size() const {
+    return u8s_to_val<u16>(&hdr_data[DBHDR_PGSIZE_OFFSET], DBHDR_PGSIZE_LEN);
   }
 
 private:
@@ -151,6 +167,7 @@ public:
        u32 pg_id)
     : f_db(f_db), db_header(db_header), pg_id(pg_id)
   {
+    assert(f_db);
     assert(db_header);
     assert(pg_data = (u8 *)malloc(db_header->get_pg_size()));
   }
@@ -160,7 +177,7 @@ public:
 
   bool read() const {
     assert(db_header);
-    u32 pg_size = db_header->get_pg_size();
+    u16 pg_size = db_header->get_pg_size();
     return mysqlite_fread(pg_data, pg_size * (pg_id - 1), pg_size, f_db);
   }
 
@@ -180,19 +197,78 @@ public:
     : Page(f_db, db_header, pg_id)
   {}
 
+  // Btree header info
+
   btree_page_type get_btree_type() const {
-    if (pg_data[0] == INDEX_INTERIOR ||
-        pg_data[0] == TABLE_INTERIOR ||
-        pg_data[0] == INDEX_LEAF ||
-        pg_data[0] == TABLE_LEAF)
-      return (btree_page_type)pg_data[0];
-    else return INVALID_BTREE_PAGE;
+    return (btree_page_type)pg_data[BTREEHDR_BTREETYPE_OFFSET];
+  }
+
+  u16 get_freeblock_offset() const {
+    return u8s_to_val<u16>(&pg_data[BTREEHDR_FREEBLOCKOFST_OFFSET],
+                           BTREEHDR_FREEBLOCKOFST_LEN);
+  }
+
+  u16 get_n_cell() const {
+    return u8s_to_val<u16>(&pg_data[BTREEHDR_NCELL_OFFSET],
+                           BTREEHDR_NCELL_LEN);
+  }
+
+  u16 get_cell_content_area_offset() const {
+    return u8s_to_val<u16>(&pg_data[BTREEHDR_CELLCONTENTAREAOFST_OFFSET],
+                           BTREEHDR_CELLCONTENTAREAOFST_LEN);
+  }
+
+  u8 get_n_fragmentation() const {
+    return pg_data[BTREEHDR_NFRAGMENTATION_OFFSET];
+  }
+
+  u32 get_rightmost_pg() const {
+    assert(get_btree_type() == INDEX_INTERIOR ||
+           get_btree_type() == TABLE_INTERIOR);
+    return u8s_to_val<u32>(&pg_data[BTREEHDR_RIGHTMOSTPG_OFFSET],
+                           BTREEHDR_RIGHTMOSTPG_LEN);
   }
 
 protected:
-  virtual u32 get_ith_cell_offset() {
-    // TODO: implement
+  bool is_valid_hdr() const {
+    bool is_valid = true;
+    u16 pg_size = db_header->get_pg_size();
+    {
+      btree_page_type type = get_btree_type();
+      is_valid &= (type == INDEX_INTERIOR ||
+                   type == TABLE_INTERIOR ||
+                   type == INDEX_LEAF ||
+                   type == TABLE_LEAF);
+    }
+    {
+      u16 offset = get_freeblock_offset();
+      is_valid &= (0 <= offset && offset < pg_size);
+    }
+    {
+      u16 n_cell = get_n_cell();
+      is_valid &= (0 <= n_cell && n_cell < pg_size);
+    }
+    {
+      u16 offset = get_cell_content_area_offset();
+      is_valid &= (0 <= offset && offset <= pg_size);
+      // cell_content_area_offset == pg_size means
+      // there are no cells yet
+    }
+    {
+      u16 n_fragmentation = get_n_fragmentation();
+      is_valid &= (0 <= n_fragmentation && n_fragmentation < pg_size);
+    }
+    return is_valid;
   }
+
+public:
+  // Page management
+  bool read() const {
+    return Page::read() && is_valid_hdr();
+  }
+
+protected:
+  virtual u32 get_ith_cell_offset() = 0;
 };
 
 /*
