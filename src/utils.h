@@ -37,6 +37,19 @@ typedef vector<u8> varint;
 
 
 /*
+** Class to prohibit copy constructor
+*/
+class Uncopyable {
+protected:
+  Uncopyable() {}
+  ~Uncopyable() {}
+private:
+    Uncopyable(const Uncopyable&);
+    Uncopyable& operator=(const Uncopyable&);
+};
+
+
+/*
 ** Read (v[0] | v[1] ...) as a variant.
 ** If MSB of v[i] is 0, then v[i+1] is ignored.
 **
@@ -55,6 +68,36 @@ static inline u64 varint2u64(varint &v)
   // 9th byte has 8 effective bits
   res = (res << 7) + v[8];
   return res;
+}
+
+
+/*
+** Read 1-4 u8 values as big-endian value.
+*/
+template<typename T>
+T u8s_to_val(const u8 * const p_sequence, int len_sequence) {
+  T v = 0;
+  for (int i = 0; i < len_sequence; ++i)
+    v = (v << 8) + p_sequence[i];
+  return v;
+}
+
+
+static inline bool mysqlite_fread(void *ptr, long offset, size_t nbyte, FILE * const f) {
+  long prev_offset = ftell(f);
+  if (fseek(f, offset, SEEK_SET) == -1) {
+    perror("fseek() failed\n");
+    return false;
+  }
+  if (nbyte != fread(ptr, 1, nbyte, f)) {
+    perror("fread() fails\n");
+    return false;
+  }
+  if (fseek(f, prev_offset, SEEK_SET) == -1) {
+    perror("fseek() failed\n");
+    return false;
+  }
+  return true;
 }
 
 

@@ -27,12 +27,14 @@ libmysqlite_engine_la_CXXFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
 ##
 # Unit tests (gtest)
 ##
-noinst_PROGRAMS = utilsTest
-gtest_ldadd = $(GTEST_SRC)/src/gtest_main.o $(GTEST_SRC)/src/gtest-all.o -lpthread
+noinst_PROGRAMS = utilsTest sqlite_formatTest
+gtest_ldadd = $(GTEST_SRC)/src/gtest_main.o $(GTEST_SRC)/src/gtest-all.o -lpthread -lstdc++
 
 utilsTest_SOURCES = utilsTest.cc
 utilsTest_LDADD = $(gtest_ldadd)
 
+sqlite_formatTest = sqlite_formatTest.cc
+sqlite_formatTest_LDADD = $(gtest_ldadd)
 
 ##
 # dtrace

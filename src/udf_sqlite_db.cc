@@ -10,56 +10,6 @@ using namespace std;
 #include "sqlite_format.h"
 #include "utils.h"
 
-static inline bool has_sqlite3_header(FILE *f)
-{
-  char s[SQLITE3_HEADER_SIZE];
-  long prev_offset = ftell(f);
-  rewind(f);
-  if (fread(s, 1, SQLITE3_HEADER_SIZE, f) != SQLITE3_HEADER_SIZE) {
-    log("fread() fails\n");
-    return false;
-  }
-  if (fseek(f, prev_offset, SEEK_SET) == -1) {
-    perror("has_sqlite3_header");
-    return false;
-  }
-  return strcmp(s, SQLITE3_HEADER) == 0;
-}
-
-/*
-** pathをopenし，もし存在すればそれがSQLite DBとしてvalidなものかをチェックする
-**
-** @return
-** NULL: Error. `message' is set.
-*/
-static inline FILE *open_sqlite_db(char *path,
-                                   /* out */
-                                   bool *is_existing_db, char *message)
-{
-  struct stat st;
-  if (stat(path, &st) == 0) {
-    *is_existing_db = true;
-    FILE *f = fopen(path, "r");
-    if (!f) {
-      sprintf(message, "Permission denied: Cannot open %s in read mode.", path);
-      return NULL;
-    }
-    if (!has_sqlite3_header(f)) {
-      sprintf(message, "Format error: %s does not seem SQLite3 database.", path);
-      return NULL;
-    }
-    return f;
-  } else {
-    *is_existing_db = false;
-    FILE *f = fopen(path, "w+");
-    if (!f) {
-      sprintf(message, "Permission denied: Cannot create %s.", path);
-      return NULL;
-    }
-    return f;
-  }
-}
-
 bool copy_sqlite_ddls(FILE *f_db,
                       /* out */
                       vector<string> &ddls)
@@ -149,7 +99,7 @@ void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
 {
   FILE *f = (FILE *)initid->extension;
   DBUG_ASSERT(f);
-  fclose(f);
+  if (0 != fclose(f)) perror("fclose() failed\n");
 
   bool *is_existing_db = (bool *)initid->ptr;
   free(is_existing_db);
