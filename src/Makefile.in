@@ -39,7 +39,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @HAVE_DTRACE_TRUE@am__append_1 = mysqlite_probes.o
-noinst_PROGRAMS = utilsTest$(EXEEXT)
+noinst_PROGRAMS = utilsTest$(EXEEXT) sqlite_formatTest$(EXEEXT)
 subdir = src
 DIST_COMMON = $(noinst_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/mysqlite_config.h.in
@@ -87,15 +87,27 @@ libmysqlite_engine_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(libmysqlite_engine_la_CXXFLAGS) $(CXXFLAGS) \
 	$(libmysqlite_engine_la_LDFLAGS) $(LDFLAGS) -o $@
 PROGRAMS = $(noinst_PROGRAMS)
-am_utilsTest_OBJECTS = utilsTest.$(OBJEXT)
-utilsTest_OBJECTS = $(am_utilsTest_OBJECTS)
+sqlite_formatTest_SOURCES = sqlite_formatTest.c
+sqlite_formatTest_OBJECTS = sqlite_formatTest.$(OBJEXT)
 am__DEPENDENCIES_1 = $(GTEST_SRC)/src/gtest_main.o \
 	$(GTEST_SRC)/src/gtest-all.o
+sqlite_formatTest_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_utilsTest_OBJECTS = utilsTest.$(OBJEXT)
+utilsTest_OBJECTS = $(am_utilsTest_OBJECTS)
 utilsTest_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+CCLD = $(CC)
+LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
 LTCXXCOMPILE = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
@@ -105,8 +117,10 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(libmysqlite_engine_la_SOURCES) $(utilsTest_SOURCES)
-DIST_SOURCES = $(libmysqlite_engine_la_SOURCES) $(utilsTest_SOURCES)
+SOURCES = $(libmysqlite_engine_la_SOURCES) sqlite_formatTest.c \
+	$(utilsTest_SOURCES)
+DIST_SOURCES = $(libmysqlite_engine_la_SOURCES) sqlite_formatTest.c \
+	$(utilsTest_SOURCES)
 HEADERS = $(noinst_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -249,14 +263,16 @@ libmysqlite_engine_la_LIBADD = -lmysqlservices \
 libmysqlite_engine_la_LDFLAGS = -module -L$(MYSQL_SRC)/libservices/
 libmysqlite_engine_la_CFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
 libmysqlite_engine_la_CXXFLAGS = $(AM_CFLAGS) -DMYSQL_DYNAMIC_PLUGIN
-gtest_ldadd = $(GTEST_SRC)/src/gtest_main.o $(GTEST_SRC)/src/gtest-all.o -lpthread
+gtest_ldadd = $(GTEST_SRC)/src/gtest_main.o $(GTEST_SRC)/src/gtest-all.o -lpthread -lstdc++
 utilsTest_SOURCES = utilsTest.cc
 utilsTest_LDADD = $(gtest_ldadd)
+sqlite_formatTest = sqlite_formatTest.cc
+sqlite_formatTest_LDADD = $(gtest_ldadd)
 all: mysqlite_config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
-.SUFFIXES: .cc .lo .o .obj
+.SUFFIXES: .c .cc .lo .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -346,6 +362,9 @@ clean-noinstPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+sqlite_formatTest$(EXEEXT): $(sqlite_formatTest_OBJECTS) $(sqlite_formatTest_DEPENDENCIES) 
+	@rm -f sqlite_formatTest$(EXEEXT)
+	$(LINK) $(sqlite_formatTest_OBJECTS) $(sqlite_formatTest_LDADD) $(LIBS)
 utilsTest$(EXEEXT): $(utilsTest_OBJECTS) $(utilsTest_DEPENDENCIES) 
 	@rm -f utilsTest$(EXEEXT)
 	$(CXXLINK) $(utilsTest_OBJECTS) $(utilsTest_LDADD) $(LIBS)
@@ -358,7 +377,29 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmysqlite_engine_la-ha_mysqlite.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmysqlite_engine_la-udf_sqlite_db.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sqlite_formatTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utilsTest.Po@am__quote@
+
+.c.o:
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(COMPILE) -c $<
+
+.c.obj:
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+
+.c.lo:
+@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
