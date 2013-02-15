@@ -46,6 +46,20 @@ typedef enum btree_page_type {
   TABLE_LEAF         = 13,
 } btree_page_type;
 
+typedef enum sqlite_type {
+  ST_NULL =  0,
+  ST_INT8 =  1,
+  ST_INT16 = 2,
+  ST_INT24 = 3,
+  ST_INT32 = 4,
+  ST_INT48 = 5,
+  ST_INT64 = 6,
+  ST_FLOAT = 7,
+  ST_C0 =    8,
+  ST_C1 =    9,
+  ST_BLOB,   /* >= 12, even */
+  ST_TEXT,   /* >= 13, odd  */
+} sqlite_type;
 
 static inline bool has_sqlite3_signature(FILE * const f)
 {
@@ -156,8 +170,8 @@ private:
 class Page {
 protected:
   FILE * const f_db;
-  u8 *pg_data;
 public:
+  u8 *pg_data;
   const DbHeader * const db_header;
   u32 pg_id;
 
@@ -296,11 +310,22 @@ public:
 */
 class TableLeafPage : public BtreePage {
 public:
- TableLeafPage(FILE * const f_db,
-               const DbHeader * const db_header,
-               u32 pg_id)
+  TableLeafPage(FILE * const f_db,
+                const DbHeader * const db_header,
+                u32 pg_id)
    : BtreePage(f_db, db_header, pg_id)
- {}
+  {}
+
+  /*
+  ** @param i  Specifies i-th cell in the page (0-origin).
+  ** @param j  Specifies j-th column in the i-th cell (0-origin).
+  */
+  void get_icell_jcol_data(u16 i, u16 j,
+                           /*out*/
+                           u16 *offset, u16 *len,
+                           sqlite_type *type) {
+    abort();
+  }
 };
 
 
