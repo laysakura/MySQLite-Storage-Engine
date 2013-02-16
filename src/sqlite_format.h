@@ -35,6 +35,8 @@
 #define BTREEHDR_RIGHTMOSTPG_OFFSET 8
 #define BTREEHDR_RIGHTMOSTPG_LEN 4
 
+#define BTREECELL_LECTCHILD_LEN 4
+
 #define CPA_ELEM_LEN 2
 
 #define SQLITE3_VARINT_MAXLEN 9
@@ -281,6 +283,7 @@ protected:
   }
 public:
 
+  // Cell info
 protected:
   /*
   ** @param i  0-origin index.
@@ -297,6 +300,21 @@ protected:
     return u8s_to_val<u16>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
   }
 public:
+
+  u32 get_leftchild_pgno(u16 start_offset) {
+    return u8s_to_val<u32>(&pg_data[start_offset], BTREECELL_LECTCHILD_LEN);
+  }
+
+  /*
+  ** @return Payload size. This can be longer than page size
+  **   when the cell has overflow pages.
+  */
+  u64 get_payload_size(u16 start_offset, u8 *len) {
+    return varint2u64(&pg_data[start_offset], len);
+  }
+  u64 get_rowid(u16 start_offset, u8 *len);
+  u16 get_payload_offset(u16 start_offset);
+  u32 get_overflow_pgno(u16 start_offset);
 
   // Page management
   bool read() const {

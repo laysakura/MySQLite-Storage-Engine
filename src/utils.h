@@ -17,7 +17,6 @@ typedef signed int         s32;
 typedef unsigned int       u32;
 typedef signed long long   s64;
 typedef unsigned long long u64;
-typedef vector<u8> varint;
 
 
 /*
@@ -57,17 +56,31 @@ private:
 ** See varint format (very simple):
 ** http://www.sqlite.org/fileformat2.html - 'A variable-length integer ...'
 */
-static inline u64 varint2u64(varint &v)
+static inline u64 varint2u64(u8 *v,
+                             /* out */
+                             u8 *len)
 {
   u64 res = v[0] & 127;
-  if ((v[0] & 128) == 0) return res;
+  if ((v[0] & 128) == 0) {
+    *len = 1;
+    return res;
+  }
   for (int i = 1; i < 8; ++i) {
     res = (res << 7) + (v[i] & 127);
-    if ((v[i] & 128)  == 0) return res;
+    if ((v[i] & 128)  == 0) {
+      *len = i + 1;
+      return res;
+    }
   }
   // 9th byte has 8 effective bits
   res = (res << 7) + v[8];
+  *len = 9;
   return res;
+}
+static inline u64 varint2u64(u8 *v)
+{
+  u8 tmp;
+  return varint2u64(v, &tmp);
 }
 
 
