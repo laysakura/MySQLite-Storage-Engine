@@ -35,7 +35,7 @@ TEST(BtreePage, BtreePageValidityCheck_success)
 
   fclose(f_db);
 }
-TEST(BtreePage, BtreePageValidityCheck_fail)
+TEST(BtreePage, BtreePageValidityCheck_page1)
 {
   FILE *f_db = open_sqlite_db("t/db/BtreePage-empty-table.sqlite");
   ASSERT_TRUE(f_db);
@@ -44,8 +44,8 @@ TEST(BtreePage, BtreePageValidityCheck_fail)
   ASSERT_TRUE(db_header.read());
 
   TBtreePage btree_page(f_db, &db_header, 1);
-  ASSERT_FALSE(btree_page.read());
-  ASSERT_FALSE(btree_page.is_valid_hdr());
+  ASSERT_TRUE(btree_page.read());
+  ASSERT_TRUE(btree_page.is_valid_hdr());
 
   fclose(f_db);
 }
@@ -111,16 +111,16 @@ TEST(TableLeafPage, get_ith_cell_cols_2CellsTable)
       u64 rowid;
       u32 overflow_pgno;
       u64 overflown_payload_sz;
-      vector<u16> cells_offset, cells_len;
-      vector<sqlite_type> cells_type;
+      vector<u16> cols_offset, cols_len;
+      vector<sqlite_type> cols_type;
 
       tbl_leaf_page.get_icell_cols(
         row,
         &rowid,
         &overflow_pgno, &overflown_payload_sz,
-        cells_offset,
-        cells_len,
-        cells_type);
+        cols_offset,
+        cols_len,
+        cols_type);
 
       ASSERT_EQ(rowid, row + 1);
 
@@ -128,15 +128,56 @@ TEST(TableLeafPage, get_ith_cell_cols_2CellsTable)
         if (row == 0 && col == 0) {
           // ST_C1 is used for value `1' instead of ST_INT8,
           // which has 0 length and can be specified only by stype.
-          ASSERT_EQ(cells_type[col], ST_C1);
-          ASSERT_EQ(cells_len[col], 0);
+          ASSERT_EQ(cols_type[col], ST_C1);
+          ASSERT_EQ(cols_len[col], 0);
         }
         else {
-          ASSERT_EQ(cells_type[col], ST_INT8);
+          ASSERT_EQ(cols_type[col], ST_INT8);
           ASSERT_EQ(2*row + col + 1,
-                    u8s_to_val<u8>(&tbl_leaf_page.pg_data[cells_offset[col]], cells_len[col]));
+                    u8s_to_val<u8>(&tbl_leaf_page.pg_data[cols_offset[col]], cols_len[col]));
         }
       }
+    }
+  }
+
+  fclose(f_db);
+}
+TEST(TableLeafPage, get_ith_cell_cols_GetTableSchema)
+{
+  FILE *f_db = open_sqlite_db("t/db/TableLeafPage-2tables.sqlite");
+  ASSERT_TRUE(f_db);
+
+  DbHeader db_header(f_db);
+  ASSERT_TRUE(db_header.read());
+
+  TableLeafPage tbl_leaf_page(f_db, &db_header, 1); // sqlite_master
+  ASSERT_TRUE(tbl_leaf_page.read());
+
+  {
+    for (u64 row = 0; row < 2; ++row) {
+      u64 rowid;
+      u32 overflow_pgno;
+      u64 overflown_payload_sz;
+      vector<u16> cols_offset, cols_len;
+      vector<sqlite_type> cols_type;
+
+      tbl_leaf_page.get_icell_cols(
+        row,
+        &rowid,
+        &overflow_pgno, &overflown_payload_sz,
+        cols_offset,
+        cols_len,
+        cols_type);
+
+      ASSERT_EQ(rowid, row + 1);
+
+      ASSERT_EQ(cols_type[4], ST_TEXT);
+      const u8 sql_col = 4;
+      string data((char *)&tbl_leaf_page.pg_data[cols_offset[sql_col]],
+                  cols_len[sql_col]);
+      char answer[100];
+      sprintf(answer, "CREATE TABLE t%llu (c1 INT, c2 INT)", rowid);
+      ASSERT_STREQ(data.c_str(), answer);
     }
   }
 

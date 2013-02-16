@@ -243,33 +243,55 @@ public:
   // Btree header info
 
   btree_page_type get_btree_type() const {
-    return (btree_page_type)pg_data[BTREEHDR_BTREETYPE_OFFSET];
+    return (btree_page_type)pg_data[
+      pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_BTREETYPE_OFFSET :
+                   BTREEHDR_BTREETYPE_OFFSET
+    ];
   }
 
   u16 get_freeblock_offset() const {
-    return u8s_to_val<u16>(&pg_data[BTREEHDR_FREEBLOCKOFST_OFFSET],
-                           BTREEHDR_FREEBLOCKOFST_LEN);
+    return u8s_to_val<u16>(
+      &pg_data[
+        pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_FREEBLOCKOFST_OFFSET :
+                     BTREEHDR_FREEBLOCKOFST_OFFSET
+      ],
+      BTREEHDR_FREEBLOCKOFST_LEN);
   }
 
   u16 get_n_cell() const {
-    return u8s_to_val<u16>(&pg_data[BTREEHDR_NCELL_OFFSET],
-                           BTREEHDR_NCELL_LEN);
+    return u8s_to_val<u16>(
+      &pg_data[
+        pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_NCELL_OFFSET :
+                     BTREEHDR_NCELL_OFFSET
+      ],
+      BTREEHDR_NCELL_LEN);
   }
 
   u16 get_cell_content_area_offset() const {
-    return u8s_to_val<u16>(&pg_data[BTREEHDR_CELLCONTENTAREAOFST_OFFSET],
-                           BTREEHDR_CELLCONTENTAREAOFST_LEN);
+    return u8s_to_val<u16>(
+      &pg_data[
+        pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_CELLCONTENTAREAOFST_OFFSET :
+                     BTREEHDR_CELLCONTENTAREAOFST_OFFSET
+      ],
+      BTREEHDR_CELLCONTENTAREAOFST_LEN);
   }
 
   u8 get_n_fragmentation() const {
-    return pg_data[BTREEHDR_NFRAGMENTATION_OFFSET];
+    return pg_data[
+      pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_NFRAGMENTATION_OFFSET :
+                   BTREEHDR_NFRAGMENTATION_OFFSET
+    ];
   }
 
   u32 get_rightmost_pg() const {
     assert(get_btree_type() == INDEX_INTERIOR ||
            get_btree_type() == TABLE_INTERIOR);
-    return u8s_to_val<u32>(&pg_data[BTREEHDR_RIGHTMOSTPG_OFFSET],
-                           BTREEHDR_RIGHTMOSTPG_LEN);
+    return u8s_to_val<u32>(
+      &pg_data[
+        pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_RIGHTMOSTPG_OFFSET :
+                     BTREEHDR_RIGHTMOSTPG_OFFSET
+      ],
+      BTREEHDR_RIGHTMOSTPG_LEN);
   }
 
 protected:
@@ -319,6 +341,7 @@ protected:
     btree_page_type type = get_btree_type();
     u16 cpa_start = (type == INDEX_LEAF || type == TABLE_LEAF) ?
       BTREEHDR_SZ_LEAF : BTREEHDR_SZ_INTERIOR;
+    if (pg_id == 1) cpa_start += DB_HEADER_SZ;
     return u8s_to_val<u16>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
   }
 public:
@@ -374,9 +397,9 @@ public:
                       /*out*/
                       u64 *rowid,
                       u32 *overflow_pgno, u64 *overflown_payload_sz,
-                      vector<u16> &cells_offset,
-                      vector<u16> &cells_len,
-                      vector<sqlite_type> &cells_type) const
+                      vector<u16> &cols_offset,
+                      vector<u16> &cols_len,
+                      vector<sqlite_type> &cols_type) const
   {
     u8 len;
     u16 offset = get_ith_cell_offset(i);
@@ -401,24 +424,24 @@ public:
         read_hdr_sz += len;
 
         if (stype <= 9) {
-          cells_type.push_back(static_cast<sqlite_type>(stype));
+          cols_type.push_back(static_cast<sqlite_type>(stype));
         } else if (stype >= 12) {
-          cells_type.push_back(stype % 2 == 0 ? ST_BLOB : ST_TEXT);
+          cols_type.push_back(stype % 2 == 0 ? ST_BLOB : ST_TEXT);
         } else {
           log("Invalid sqlite type (stype=%d) on page#%u cell#%u\n",
               stype, pg_id, i);
           return false;
         }
 
-        cells_len.push_back(stype2len(stype));
+        cols_len.push_back(stype2len(stype));
       }
 
       // Read column bodies
-      for (vector<u16>::iterator it = cells_len.begin();
-           it != cells_len.end();
+      for (vector<u16>::iterator it = cols_len.begin();
+           it != cols_len.end();
            ++it)
       {
-        cells_offset.push_back(offset);
+        cols_offset.push_back(offset);
         offset += *it;
       }
 
