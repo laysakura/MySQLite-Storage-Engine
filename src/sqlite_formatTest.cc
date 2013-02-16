@@ -171,8 +171,7 @@ TEST(TableLeafPage, get_ith_cell_cols_GetTableSchema)
 
       ASSERT_EQ(rowid, row + 1);
 
-      ASSERT_EQ(cols_type[4], ST_TEXT);
-      const u8 sql_col = 4;
+      ASSERT_EQ(cols_type[SQLITE_MASTER_COLNO_SQL], ST_TEXT);
       string data((char *)&tbl_leaf_page.pg_data[cols_offset[sql_col]],
                   cols_len[sql_col]);
       char answer[100];
