@@ -8,16 +8,16 @@
 /*
 ** Constants
 */
-#define SQLITE3_SIGNATURE_SIZE 16
+#define SQLITE3_SIGNATURE_SZ 16
 #define SQLITE3_SIGNATURE "SQLite format 3"
 
-#define DB_HEADER_SIZE 100
+#define DB_HEADER_SZ 100
 
-#define DBHDR_PGSIZE_OFFSET 16
-#define DBHDR_PGSIZE_LEN 2
+#define DBHDR_PGSZ_OFFSET 16
+#define DBHDR_PGSZ_LEN 2
 
-#define BTREEHDR_SIZE_LEAF 8
-#define BTREEHDR_SIZE_INTERIOR 12
+#define BTREEHDR_SZ_LEAF 8
+#define BTREEHDR_SZ_INTERIOR 12
 
 #define BTREEHDR_BTREETYPE_OFFSET 0
 
@@ -36,6 +36,7 @@
 #define BTREEHDR_RIGHTMOSTPG_LEN 4
 
 #define BTREECELL_LECTCHILD_LEN 4
+#define BTREECELL_OVERFLOWPGNO_LEN 4
 
 #define CPA_ELEM_LEN 2
 
@@ -63,11 +64,32 @@ typedef enum sqlite_type {
   ST_TEXT,   /* >= 13, odd  */
 } sqlite_type;
 
+
 static inline bool has_sqlite3_signature(FILE * const f)
 {
-  char s[SQLITE3_SIGNATURE_SIZE];
-  if (!mysqlite_fread(s, 0, SQLITE3_SIGNATURE_SIZE, f)) return false;
+  char s[SQLITE3_SIGNATURE_SZ];
+  if (!mysqlite_fread(s, 0, SQLITE3_SIGNATURE_SZ, f)) return false;
   return strcmp(s, SQLITE3_SIGNATURE) == 0;
+}
+
+
+static inline u16 stype2len(u16 stype) {
+  switch (stype) {
+  case ST_NULL:
+  case ST_C0:
+  case ST_C1:
+    return 0;
+
+  case ST_INT8:  return 1;
+  case ST_INT16: return 2;
+  case ST_INT32: return 4;
+
+  case ST_INT64:
+  case ST_FLOAT:
+    return 8;
+  }
+  assert(stype != 10 && stype != 11);
+  return (stype - (12 + (stype % 2))) / 2;
 }
 
 
@@ -147,18 +169,18 @@ public:
     : f_db(f_db)
   {
     assert(f_db);
-    assert(hdr_data = (u8 *)malloc(DB_HEADER_SIZE));
+    assert(hdr_data = (u8 *)malloc(DB_HEADER_SZ));
   }
   ~DbHeader() {
     free(hdr_data);
   }
 
   bool read() const {
-    return mysqlite_fread(hdr_data, 0, DB_HEADER_SIZE, f_db);
+    return mysqlite_fread(hdr_data, 0, DB_HEADER_SZ, f_db);
   }
 
-  u16 get_pg_size() const {
-    return u8s_to_val<u16>(&hdr_data[DBHDR_PGSIZE_OFFSET], DBHDR_PGSIZE_LEN);
+  u16 get_pg_sz() const {
+    return u8s_to_val<u16>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
   }
 
 private:
@@ -190,7 +212,7 @@ public:
   {
     assert(f_db);
     assert(db_header);
-    assert(pg_data = (u8 *)malloc(db_header->get_pg_size()));
+    assert(pg_data = (u8 *)malloc(db_header->get_pg_sz()));
   }
   virtual ~Page() {
     free(pg_data);
@@ -198,8 +220,8 @@ public:
 
   bool read() const {
     assert(db_header);
-    u16 pg_size = db_header->get_pg_size();
-    return mysqlite_fread(pg_data, pg_size * (pg_id - 1), pg_size, f_db);
+    u16 pg_sz = db_header->get_pg_sz();
+    return mysqlite_fread(pg_data, pg_sz * (pg_id - 1), pg_sz, f_db);
   }
 
 private:
@@ -253,7 +275,7 @@ public:
 protected:
   bool is_valid_hdr() const {
     bool is_valid = true;
-    u16 pg_size = db_header->get_pg_size();
+    u16 pg_sz = db_header->get_pg_sz();
     {
       btree_page_type type = get_btree_type();
       is_valid &= (type == INDEX_INTERIOR ||
@@ -263,21 +285,21 @@ protected:
     }
     {
       u16 offset = get_freeblock_offset();
-      is_valid &= (0 <= offset && offset < pg_size);
+      is_valid &= (0 <= offset && offset < pg_sz);
     }
     {
       u16 n_cell = get_n_cell();
-      is_valid &= (0 <= n_cell && n_cell < pg_size);
+      is_valid &= (0 <= n_cell && n_cell < pg_sz);
     }
     {
       u16 offset = get_cell_content_area_offset();
-      is_valid &= (0 <= offset && offset <= pg_size);
-      // cell_content_area_offset == pg_size means
+      is_valid &= (0 <= offset && offset <= pg_sz);
+      // cell_content_area_offset == pg_sz means
       // there are no cells yet
     }
     {
       u16 n_fragmentation = get_n_fragmentation();
-      is_valid &= (0 <= n_fragmentation && n_fragmentation < pg_size);
+      is_valid &= (0 <= n_fragmentation && n_fragmentation < pg_sz);
     }
     return is_valid;
   }
@@ -290,31 +312,34 @@ protected:
   **
   ** @return  0 if i is out of larger than the actual number of cells.
   */
-  u16 get_ith_cell_offset(u16 i) {
+  u16 get_ith_cell_offset(u16 i) const {
     if (i >= get_n_cell()) return 0;
 
     // cpa stands for Cell Pointer Array
     btree_page_type type = get_btree_type();
     u16 cpa_start = (type == INDEX_LEAF || type == TABLE_LEAF) ?
-      BTREEHDR_SIZE_LEAF : BTREEHDR_SIZE_INTERIOR;
+      BTREEHDR_SZ_LEAF : BTREEHDR_SZ_INTERIOR;
     return u8s_to_val<u16>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
   }
 public:
 
-  u32 get_leftchild_pgno(u16 start_offset) {
+  u32 get_leftchild_pgno(u16 start_offset) const {
     return u8s_to_val<u32>(&pg_data[start_offset], BTREECELL_LECTCHILD_LEN);
   }
 
   /*
-  ** @return Payload size. This can be longer than page size
+  ** @return Payload sz. This can be longer than page sz
   **   when the cell has overflow pages.
   */
-  u64 get_payload_size(u16 start_offset, u8 *len) {
+  u64 get_payload_sz(u16 start_offset, u8 *len) const {
     return varint2u64(&pg_data[start_offset], len);
   }
-  u64 get_rowid(u16 start_offset, u8 *len);
-  u16 get_payload_offset(u16 start_offset);
-  u32 get_overflow_pgno(u16 start_offset);
+
+  u64 get_rowid(u16 start_offset, u8 *len) const {
+    return varint2u64(&pg_data[start_offset], len);
+  }
+
+  u32 get_overflow_pgno(u16 start_offset) const;
 
   // Page management
   bool read() const {
@@ -335,14 +360,74 @@ public:
   {}
 
   /*
+  ** TODO: maybe reading overflow_pgno, overflown_payload_sz has bugs
+  **
   ** @param i  Specifies i-th cell in the page (0-origin).
-  ** @param j  Specifies j-th column in the i-th cell (0-origin).
+  ** @param overflow_pgno  Pgno to overflow page. 0 if no overflow page.
+  ** @param overflown_payload_sz  Remaining payload size.
+  **   It can be larger than page size when 2 or more overflow page are involved.
+  **
+  ** @return false on error
   */
-  void get_icell_jcol_data(u16 i, u16 j,
-                           /*out*/
-                           u16 *offset, u16 *len,
-                           sqlite_type *type) {
-    abort();
+  public:
+  bool get_icell_cols(u16 i,
+                      /*out*/
+                      u64 *rowid,
+                      u32 *overflow_pgno, u64 *overflown_payload_sz,
+                      vector<u16> &cells_offset,
+                      vector<u16> &cells_len,
+                      vector<sqlite_type> &cells_type) const
+  {
+    u8 len;
+    u16 offset = get_ith_cell_offset(i);
+
+    u64 payload_sz = get_payload_sz(offset, &len);
+    offset += len;
+
+    *rowid = get_rowid(offset, &len);
+    offset += len;
+
+    { // Read payload
+      // @see
+      // Extracting SQLite records - Figure 4. SQLite record format
+      u16 payload_start_offset = offset;
+      u64 hdr_sz = varint2u64(&pg_data[offset], &len);
+      offset += len;
+
+      // Read column headers
+      for (u64 read_hdr_sz = len; read_hdr_sz < hdr_sz; ) {
+        u16 stype = varint2u64(&pg_data[offset], &len);
+        offset += len;
+        read_hdr_sz += len;
+
+        if (stype <= 9) {
+          cells_type.push_back(static_cast<sqlite_type>(stype));
+        } else if (stype >= 12) {
+          cells_type.push_back(stype % 2 == 0 ? ST_BLOB : ST_TEXT);
+        } else {
+          log("Invalid sqlite type (stype=%d) on page#%u cell#%u\n",
+              stype, pg_id, i);
+          return false;
+        }
+
+        cells_len.push_back(stype2len(stype));
+      }
+
+      // Read column bodies
+      for (vector<u16>::iterator it = cells_len.begin();
+           it != cells_len.end();
+           ++it)
+      {
+        cells_offset.push_back(offset);
+        offset += *it;
+      }
+
+      *overflown_payload_sz = payload_sz - (offset - payload_start_offset);
+    }
+
+    // Read overflow pgno
+    *overflow_pgno = u8s_to_val<u32>(&pg_data[offset], BTREECELL_OVERFLOWPGNO_LEN);
+    return true;
   }
 };
 

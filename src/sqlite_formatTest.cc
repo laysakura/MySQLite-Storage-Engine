@@ -78,11 +78,11 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 
   {
     ASSERT_GT(btree_page.get_ith_cell_offset(0), 0);
-    ASSERT_LT(btree_page.get_ith_cell_offset(0), db_header.get_pg_size());
+    ASSERT_LT(btree_page.get_ith_cell_offset(0), db_header.get_pg_sz());
   }
   {
     ASSERT_GT(btree_page.get_ith_cell_offset(1), 0);
-    ASSERT_LT(btree_page.get_ith_cell_offset(1), db_header.get_pg_size());
+    ASSERT_LT(btree_page.get_ith_cell_offset(1), db_header.get_pg_sz());
   }
   {
     ASSERT_EQ(btree_page.get_ith_cell_offset(2), 0);
@@ -95,7 +95,7 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 /*
 ** TableLeafPage
 */
-TEST(TableLeafPage, get_ith_cell_offset_2CellsTable)
+TEST(TableLeafPage, get_ith_cell_cols_2CellsTable)
 {
   FILE *f_db = open_sqlite_db("t/db/TableLeafPage-int.sqlite");
   ASSERT_TRUE(f_db);
@@ -107,25 +107,42 @@ TEST(TableLeafPage, get_ith_cell_offset_2CellsTable)
   ASSERT_TRUE(tbl_leaf_page.read());
 
   {
-    u16 offset, len;
-    sqlite_type type;
+    for (u64 row = 0; row < 2; ++row) {
+      u64 rowid;
+      u32 overflow_pgno;
+      u64 overflown_payload_sz;
+      vector<u16> cells_offset, cells_len;
+      vector<sqlite_type> cells_type;
 
-    tbl_leaf_page.get_icell_jcol_data(0, 0, &offset, &len, &type);
-    ASSERT_EQ(type, ST_INT8);
-    ASSERT_EQ(1, u8s_to_val<u8>(&tbl_leaf_page.pg_data[offset], len));
+      tbl_leaf_page.get_icell_cols(
+        row,
+        &rowid,
+        &overflow_pgno, &overflown_payload_sz,
+        cells_offset,
+        cells_len,
+        cells_type);
 
-    tbl_leaf_page.get_icell_jcol_data(0, 1, &offset, &len, &type);
-    ASSERT_EQ(type, ST_INT8);
-    ASSERT_EQ(2, u8s_to_val<u8>(&tbl_leaf_page.pg_data[offset], len));
+      ASSERT_EQ(rowid, row + 1);
 
-    tbl_leaf_page.get_icell_jcol_data(1, 0, &offset, &len, &type);
-    ASSERT_EQ(type, ST_INT8);
-    ASSERT_EQ(3, u8s_to_val<u8>(&tbl_leaf_page.pg_data[offset], len));
-
-    tbl_leaf_page.get_icell_jcol_data(1, 1, &offset, &len, &type);
-    ASSERT_EQ(type, ST_INT8);
-    ASSERT_EQ(4, u8s_to_val<u8>(&tbl_leaf_page.pg_data[offset], len));
+      for (u64 col = 0; col < 2; ++col) {
+        if (row == 0 && col == 0) {
+          // ST_C1 is used for value `1' instead of ST_INT8,
+          // which has 0 length and can be specified only by stype.
+          ASSERT_EQ(cells_type[col], ST_C1);
+          ASSERT_EQ(cells_len[col], 0);
+        }
+        else {
+          ASSERT_EQ(cells_type[col], ST_INT8);
+          ASSERT_EQ(2*row + col + 1,
+                    u8s_to_val<u8>(&tbl_leaf_page.pg_data[cells_offset[col]], cells_len[col]));
+        }
+      }
+    }
   }
 
   fclose(f_db);
+}
+TEST(TableLeafPage, DISABLED_get_ith_cell_cols_OverflowPage)
+{
+  // TODO: write
 }
