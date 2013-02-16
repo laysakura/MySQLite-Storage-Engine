@@ -10,9 +10,10 @@ using namespace std;
 #include "sqlite_format.h"
 #include "utils.h"
 
-bool copy_sqlite_ddls(FILE *f_db,
-                      /* out */
-                      vector<string> &ddls)
+bool copy_sqlite_table_formats(FILE *f_db,
+                               /* out */
+                               vector<string> &table_names,
+                               vector<string> &ddls)
 {
   DbHeader db_header(f_db);
   if (!db_header.read()) {
@@ -43,14 +44,19 @@ bool copy_sqlite_ddls(FILE *f_db,
         cols_len,
         cols_type);
 
+      // Table name
+      assert(cols_type[SQLITE_MASTER_COLNO_SQL] == ST_TEXT);
+      table_names.push_back(
+        string((char *)&page1.pg_data[cols_offset[SQLITE_MASTER_COLNO_NAME]],
+               cols_len[SQLITE_MASTER_COLNO_NAME]));
+
+      // Table DDL
       assert(cols_type[SQLITE_MASTER_COLNO_SQL] == ST_TEXT);
       ddls.push_back(
         string((char *)&page1.pg_data[cols_offset[SQLITE_MASTER_COLNO_SQL]],
                cols_len[SQLITE_MASTER_COLNO_SQL]));
     }
   }
-
-  ddls.push_back("create table hhh02_table1_ddl_short_t1 (c1 INT)");
   return true;
 }
 
@@ -70,10 +76,22 @@ bool dup_table_schema(FILE *f_db)
   }
 
   { // Duplicate SQLite DDLs to MySQL
-    vector<string> ddls;
-    if (!copy_sqlite_ddls(f_db, ddls))
+    vector<string> table_names, ddls;
+    if (!copy_sqlite_table_formats(f_db, table_names, ddls))
       goto err_ret;
 
+    // Drop all tables defined in SQLite DB first (for updating .FRM)
+    for (vector<string>::iterator it = table_names.begin();
+         it != table_names.end(); ++it)
+    {
+      string sql = string("drop table if exists ") + *it;
+      if (mysql_query(conn, sql.c_str())) {
+        log("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+        goto err_ret;
+      }
+    }
+
+    // Create tables
     for (vector<string>::iterator it = ddls.begin(); it != ddls.end(); ++it) {
       if (mysql_query(conn, it->c_str())) {
         log("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));

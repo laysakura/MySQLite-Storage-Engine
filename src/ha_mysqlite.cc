@@ -92,6 +92,7 @@
 #include <sql_plugin.h>
 
 #include "ha_mysqlite.h"
+#include "utils.h"
 #include "probes_mysql.h"
 
 static handler *mysqlite_create_handler(handlerton *hton,
@@ -566,6 +567,8 @@ int ha_mysqlite::rnd_end()
 */
 int ha_mysqlite::rnd_next(uchar *buf)
 {
+  log("enter rnd_next\n");
+
   int rc;
   DBUG_ENTER("ha_mysqlite::rnd_next");
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
@@ -619,6 +622,8 @@ void ha_mysqlite::position(const uchar *record)
 */
 int ha_mysqlite::rnd_pos(uchar *buf, uchar *pos)
 {
+  log("enter rnd_pos\n");
+
   int rc;
   DBUG_ENTER("ha_mysqlite::rnd_pos");
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
