@@ -172,8 +172,8 @@ TEST(TableLeafPage, get_ith_cell_cols_GetTableSchema)
       ASSERT_EQ(rowid, row + 1);
 
       ASSERT_EQ(cols_type[SQLITE_MASTER_COLNO_SQL], ST_TEXT);
-      string data((char *)&tbl_leaf_page.pg_data[cols_offset[sql_col]],
-                  cols_len[sql_col]);
+      string data((char *)&tbl_leaf_page.pg_data[cols_offset[SQLITE_MASTER_COLNO_SQL]],
+                  cols_len[SQLITE_MASTER_COLNO_SQL]);
       char answer[100];
       sprintf(answer, "CREATE TABLE t%llu (c1 INT, c2 INT)", rowid);
       ASSERT_STREQ(data.c_str(), answer);

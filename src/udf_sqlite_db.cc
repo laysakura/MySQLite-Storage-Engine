@@ -14,8 +14,42 @@ bool copy_sqlite_ddls(FILE *f_db,
                       /* out */
                       vector<string> &ddls)
 {
-  // TODO: Somehow vector.push_back fails in runtime
-  // saying "undefined symbol: ..."
+  DbHeader db_header(f_db);
+  if (!db_header.read()) {
+    log("Cannot read DB header\n");
+    return false;
+  }
+
+  TableLeafPage page1(f_db, &db_header, 1); // sqlite_master
+  if (!page1.read()) {
+    log("Cannot read page\n");
+    return false;
+  }
+
+  {
+    Pgsz n_cell = page1.get_n_cell();
+    for (u64 cell = 0; cell < n_cell; ++cell) {
+      u64 rowid;
+      Pgno overflow_pgno;
+      u64 overflown_payload_sz;
+      vector<Pgsz> cols_offset, cols_len;
+      vector<sqlite_type> cols_type;
+
+      page1.get_icell_cols(
+        cell,
+        &rowid,
+        &overflow_pgno, &overflown_payload_sz,
+        cols_offset,
+        cols_len,
+        cols_type);
+
+      assert(cols_type[SQLITE_MASTER_COLNO_SQL] == ST_TEXT);
+      ddls.push_back(
+        string((char *)&page1.pg_data[cols_offset[SQLITE_MASTER_COLNO_SQL]],
+               cols_len[SQLITE_MASTER_COLNO_SQL]));
+    }
+  }
+
   ddls.push_back("create table hhh02_table1_ddl_short_t1 (c1 INT)");
   return true;
 }
