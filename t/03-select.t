@@ -29,10 +29,11 @@ is_deeply(
         ['Super Dry', 'Asahi'],
     ],
 );
-is_deeply(
-    $dbh->selectall_arrayref("select * from japan where maker = 'Kirin'"),
-    [
-        ['Ichiban Shibori', 'Kirin'],
-    ],
-);
-
+SKIP: {
+    is_deeply(
+        $dbh->selectall_arrayref("select * from japan where maker = 'Kirin'"),
+        [
+            ['Ichiban Shibori', 'Kirin'],
+        ],
+    );
+}
