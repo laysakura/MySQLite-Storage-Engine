@@ -42,6 +42,13 @@
 
 #define SQLITE3_VARINT_MAXLEN 9
 
+
+/*
+** Types
+*/
+typedef u32 Pgno;
+typedef u16 Pgsz;
+
 typedef enum btree_page_type {
   INDEX_INTERIOR     = 2,
   TABLE_INTERIOR     = 5,
@@ -73,7 +80,7 @@ static inline bool has_sqlite3_signature(FILE * const f)
 }
 
 
-static inline u16 stype2len(u16 stype) {
+static inline Pgsz stype2len(Pgsz stype) {
   switch (stype) {
   case ST_NULL:
   case ST_C0:
@@ -179,8 +186,8 @@ public:
     return mysqlite_fread(hdr_data, 0, DB_HEADER_SZ, f_db);
   }
 
-  u16 get_pg_sz() const {
-    return u8s_to_val<u16>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
+  Pgsz get_pg_sz() const {
+    return u8s_to_val<Pgsz>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
   }
 
 private:
@@ -197,7 +204,7 @@ protected:
 public:
   u8 *pg_data;
   const DbHeader * const db_header;
-  u32 pg_id;
+  Pgno pg_id;
 
 public:
   /*
@@ -207,7 +214,7 @@ public:
   */
   Page(FILE * const f_db,
        const DbHeader * const db_header,
-       u32 pg_id)
+       Pgno pg_id)
     : f_db(f_db), db_header(db_header), pg_id(pg_id)
   {
     assert(f_db);
@@ -220,7 +227,7 @@ public:
 
   bool read() const {
     assert(db_header);
-    u16 pg_sz = db_header->get_pg_sz();
+    Pgsz pg_sz = db_header->get_pg_sz();
     return mysqlite_fread(pg_data, pg_sz * (pg_id - 1), pg_sz, f_db);
   }
 
@@ -236,7 +243,7 @@ class BtreePage : public Page {
 public:
   BtreePage(FILE * const f_db,
             const DbHeader * const db_header,
-            u32 pg_id)
+            Pgno pg_id)
     : Page(f_db, db_header, pg_id)
   {}
 
@@ -249,8 +256,8 @@ public:
     ];
   }
 
-  u16 get_freeblock_offset() const {
-    return u8s_to_val<u16>(
+  Pgsz get_freeblock_offset() const {
+    return u8s_to_val<Pgsz>(
       &pg_data[
         pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_FREEBLOCKOFST_OFFSET :
                      BTREEHDR_FREEBLOCKOFST_OFFSET
@@ -258,8 +265,8 @@ public:
       BTREEHDR_FREEBLOCKOFST_LEN);
   }
 
-  u16 get_n_cell() const {
-    return u8s_to_val<u16>(
+  Pgsz get_n_cell() const {
+    return u8s_to_val<Pgsz>(
       &pg_data[
         pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_NCELL_OFFSET :
                      BTREEHDR_NCELL_OFFSET
@@ -267,8 +274,8 @@ public:
       BTREEHDR_NCELL_LEN);
   }
 
-  u16 get_cell_content_area_offset() const {
-    return u8s_to_val<u16>(
+  Pgsz get_cell_content_area_offset() const {
+    return u8s_to_val<Pgsz>(
       &pg_data[
         pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_CELLCONTENTAREAOFST_OFFSET :
                      BTREEHDR_CELLCONTENTAREAOFST_OFFSET
@@ -283,10 +290,10 @@ public:
     ];
   }
 
-  u32 get_rightmost_pg() const {
+  Pgno get_rightmost_pg() const {
     assert(get_btree_type() == INDEX_INTERIOR ||
            get_btree_type() == TABLE_INTERIOR);
-    return u8s_to_val<u32>(
+    return u8s_to_val<Pgno>(
       &pg_data[
         pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_RIGHTMOSTPG_OFFSET :
                      BTREEHDR_RIGHTMOSTPG_OFFSET
@@ -297,7 +304,7 @@ public:
 protected:
   bool is_valid_hdr() const {
     bool is_valid = true;
-    u16 pg_sz = db_header->get_pg_sz();
+    Pgsz pg_sz = db_header->get_pg_sz();
     {
       btree_page_type type = get_btree_type();
       is_valid &= (type == INDEX_INTERIOR ||
@@ -306,21 +313,21 @@ protected:
                    type == TABLE_LEAF);
     }
     {
-      u16 offset = get_freeblock_offset();
+      Pgsz offset = get_freeblock_offset();
       is_valid &= (0 <= offset && offset < pg_sz);
     }
     {
-      u16 n_cell = get_n_cell();
+      Pgsz n_cell = get_n_cell();
       is_valid &= (0 <= n_cell && n_cell < pg_sz);
     }
     {
-      u16 offset = get_cell_content_area_offset();
+      Pgsz offset = get_cell_content_area_offset();
       is_valid &= (0 <= offset && offset <= pg_sz);
       // cell_content_area_offset == pg_sz means
       // there are no cells yet
     }
     {
-      u16 n_fragmentation = get_n_fragmentation();
+      Pgsz n_fragmentation = get_n_fragmentation();
       is_valid &= (0 <= n_fragmentation && n_fragmentation < pg_sz);
     }
     return is_valid;
@@ -334,35 +341,35 @@ protected:
   **
   ** @return  0 if i is out of larger than the actual number of cells.
   */
-  u16 get_ith_cell_offset(u16 i) const {
+  Pgsz get_ith_cell_offset(Pgsz i) const {
     if (i >= get_n_cell()) return 0;
 
     // cpa stands for Cell Pointer Array
     btree_page_type type = get_btree_type();
-    u16 cpa_start = (type == INDEX_LEAF || type == TABLE_LEAF) ?
+    Pgsz cpa_start = (type == INDEX_LEAF || type == TABLE_LEAF) ?
       BTREEHDR_SZ_LEAF : BTREEHDR_SZ_INTERIOR;
     if (pg_id == 1) cpa_start += DB_HEADER_SZ;
-    return u8s_to_val<u16>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
+    return u8s_to_val<Pgsz>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
   }
 public:
 
-  u32 get_leftchild_pgno(u16 start_offset) const {
-    return u8s_to_val<u32>(&pg_data[start_offset], BTREECELL_LECTCHILD_LEN);
+  Pgno get_leftchild_pgno(Pgsz start_offset) const {
+    return u8s_to_val<Pgno>(&pg_data[start_offset], BTREECELL_LECTCHILD_LEN);
   }
 
   /*
   ** @return Payload sz. This can be longer than page sz
   **   when the cell has overflow pages.
   */
-  u64 get_payload_sz(u16 start_offset, u8 *len) const {
+  u64 get_payload_sz(Pgsz start_offset, u8 *len) const {
     return varint2u64(&pg_data[start_offset], len);
   }
 
-  u64 get_rowid(u16 start_offset, u8 *len) const {
+  u64 get_rowid(Pgsz start_offset, u8 *len) const {
     return varint2u64(&pg_data[start_offset], len);
   }
 
-  u32 get_overflow_pgno(u16 start_offset) const;
+  Pgno get_overflow_pgno(Pgsz start_offset) const;
 
   // Page management
   bool read() const {
@@ -378,7 +385,7 @@ class TableLeafPage : public BtreePage {
 public:
   TableLeafPage(FILE * const f_db,
                 const DbHeader * const db_header,
-                u32 pg_id)
+                Pgno pg_id)
    : BtreePage(f_db, db_header, pg_id)
   {}
 
@@ -393,16 +400,16 @@ public:
   ** @return false on error
   */
   public:
-  bool get_icell_cols(u16 i,
+  bool get_icell_cols(Pgsz i,
                       /*out*/
                       u64 *rowid,
-                      u32 *overflow_pgno, u64 *overflown_payload_sz,
-                      vector<u16> &cols_offset,
-                      vector<u16> &cols_len,
+                      Pgno *overflow_pgno, u64 *overflown_payload_sz,
+                      vector<Pgsz> &cols_offset,
+                      vector<Pgsz> &cols_len,
                       vector<sqlite_type> &cols_type) const
   {
     u8 len;
-    u16 offset = get_ith_cell_offset(i);
+    Pgsz offset = get_ith_cell_offset(i);
 
     u64 payload_sz = get_payload_sz(offset, &len);
     offset += len;
@@ -413,13 +420,13 @@ public:
     { // Read payload
       // @see
       // Extracting SQLite records - Figure 4. SQLite record format
-      u16 payload_start_offset = offset;
+      Pgsz payload_start_offset = offset;
       u64 hdr_sz = varint2u64(&pg_data[offset], &len);
       offset += len;
 
       // Read column headers
       for (u64 read_hdr_sz = len; read_hdr_sz < hdr_sz; ) {
-        u16 stype = varint2u64(&pg_data[offset], &len);
+        Pgsz stype = varint2u64(&pg_data[offset], &len);
         offset += len;
         read_hdr_sz += len;
 
@@ -437,7 +444,7 @@ public:
       }
 
       // Read column bodies
-      for (vector<u16>::iterator it = cols_len.begin();
+      for (vector<Pgsz>::iterator it = cols_len.begin();
            it != cols_len.end();
            ++it)
       {
@@ -449,7 +456,7 @@ public:
     }
 
     // Read overflow pgno
-    *overflow_pgno = u8s_to_val<u32>(&pg_data[offset], BTREECELL_OVERFLOWPGNO_LEN);
+    *overflow_pgno = u8s_to_val<Pgno>(&pg_data[offset], BTREECELL_OVERFLOWPGNO_LEN);
     return true;
   }
 };

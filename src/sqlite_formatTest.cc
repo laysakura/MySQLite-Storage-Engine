@@ -10,10 +10,10 @@ class TBtreePage : public BtreePage {
 public:
   TBtreePage(FILE * const f_db,
              const DbHeader * const db_header,
-             u32 pg_id)
+             Pgno pg_id)
     : BtreePage(f_db, db_header, pg_id)
   {}
-  u16 get_ith_cell_offset(u16 i) {
+  Pgsz get_ith_cell_offset(Pgsz i) {
     return BtreePage::get_ith_cell_offset(i);
   }
   bool is_valid_hdr() const {
@@ -109,9 +109,9 @@ TEST(TableLeafPage, get_ith_cell_cols_2CellsTable)
   {
     for (u64 row = 0; row < 2; ++row) {
       u64 rowid;
-      u32 overflow_pgno;
+      Pgno overflow_pgno;
       u64 overflown_payload_sz;
-      vector<u16> cols_offset, cols_len;
+      vector<Pgsz> cols_offset, cols_len;
       vector<sqlite_type> cols_type;
 
       tbl_leaf_page.get_icell_cols(
@@ -156,9 +156,9 @@ TEST(TableLeafPage, get_ith_cell_cols_GetTableSchema)
   {
     for (u64 row = 0; row < 2; ++row) {
       u64 rowid;
-      u32 overflow_pgno;
+      Pgno overflow_pgno;
       u64 overflown_payload_sz;
-      vector<u16> cols_offset, cols_len;
+      vector<Pgsz> cols_offset, cols_len;
       vector<sqlite_type> cols_type;
 
       tbl_leaf_page.get_icell_cols(
