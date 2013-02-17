@@ -164,7 +164,7 @@ void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
 ** 0: Creating new DB in write mode.
 ** 1: Opening existing DB in read mode.
 */
-long long sqlite_db(UDF_INIT *initid __attribute__((unused)), UDF_ARGS *args,
+long long sqlite_db(UDF_INIT *initid, UDF_ARGS *args,
                     char *is_null, char *error)
 {
   FILE *f_db = (FILE *)initid->extension;

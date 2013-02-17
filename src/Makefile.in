@@ -79,8 +79,7 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 libmysqlite_engine_la_DEPENDENCIES =  \
 	$(MYSQL_SRC)/libmysql/libmysqlclient.a $(am__append_1)
 am_libmysqlite_engine_la_OBJECTS =  \
-	libmysqlite_engine_la-ha_mysqlite.lo \
-	libmysqlite_engine_la-udf_sqlite_db.lo
+	libmysqlite_engine_la-ha_mysqlite.lo
 libmysqlite_engine_la_OBJECTS = $(am_libmysqlite_engine_la_OBJECTS)
 libmysqlite_engine_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) \
@@ -257,7 +256,7 @@ noinst_HEADERS = ha_mysqlite.h \
 		 mysqlite_probes.h
 
 lib_LTLIBRARIES = libmysqlite_engine.la
-libmysqlite_engine_la_SOURCES = ha_mysqlite.cc udf_sqlite_db.cc
+libmysqlite_engine_la_SOURCES = ha_mysqlite.cc #udf_sqlite_db.cc
 libmysqlite_engine_la_LIBADD = -lmysqlservices \
 	$(MYSQL_SRC)/libmysql/libmysqlclient.a $(am__append_1)
 libmysqlite_engine_la_LDFLAGS = -module -L$(MYSQL_SRC)/libservices/
@@ -376,7 +375,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmysqlite_engine_la-ha_mysqlite.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmysqlite_engine_la-udf_sqlite_db.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sqlite_formatTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utilsTest.Po@am__quote@
 
@@ -428,13 +426,6 @@ libmysqlite_engine_la-ha_mysqlite.lo: ha_mysqlite.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ha_mysqlite.cc' object='libmysqlite_engine_la-ha_mysqlite.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmysqlite_engine_la_CXXFLAGS) $(CXXFLAGS) -c -o libmysqlite_engine_la-ha_mysqlite.lo `test -f 'ha_mysqlite.cc' || echo '$(srcdir)/'`ha_mysqlite.cc
-
-libmysqlite_engine_la-udf_sqlite_db.lo: udf_sqlite_db.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmysqlite_engine_la_CXXFLAGS) $(CXXFLAGS) -MT libmysqlite_engine_la-udf_sqlite_db.lo -MD -MP -MF $(DEPDIR)/libmysqlite_engine_la-udf_sqlite_db.Tpo -c -o libmysqlite_engine_la-udf_sqlite_db.lo `test -f 'udf_sqlite_db.cc' || echo '$(srcdir)/'`udf_sqlite_db.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libmysqlite_engine_la-udf_sqlite_db.Tpo $(DEPDIR)/libmysqlite_engine_la-udf_sqlite_db.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='udf_sqlite_db.cc' object='libmysqlite_engine_la-udf_sqlite_db.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libmysqlite_engine_la_CXXFLAGS) $(CXXFLAGS) -c -o libmysqlite_engine_la-udf_sqlite_db.lo `test -f 'udf_sqlite_db.cc' || echo '$(srcdir)/'`udf_sqlite_db.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo
