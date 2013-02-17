@@ -27,8 +27,8 @@ AC_SUBST(GTEST_SRC)
 # We only support GCC and Sun's forte at the moment
 if test "$GCC" = "yes"
 then
-  CFLAGS="$CFLAGS -Wall"
-  CXXFLAGS="$CXXFLAGS -Wall"
+  CFLAGS="$CFLAGS -Wall -fno-omit-frame-pointer -fno-strict-aliasing -DSAFE_MUTEX"
+  CXXFLAGS="$CXXFLAGS -Wall -fno-omit-frame-pointer -fno-strict-aliasing -DSAFE_MUTEX"
 else
   CFLAGS="-Xa -xstrconst -mt -D_FORTEC_ -fast -m64"
   CXXFLAGS="$CXXFLAGS -noex -mt -D_FORTEC_ -fast -m64"
