@@ -94,6 +94,7 @@
 #include "ha_mysqlite.h"
 #include "utils.h"
 #include "probes_mysql.h"
+#include "udf_sqlite_db.cc"
 
 static handler *mysqlite_create_handler(handlerton *hton,
                                        TABLE_SHARE *table, 

@@ -31,8 +31,8 @@
   /sql/handler.h and ha_mysqlite.cc
 */
 
-#ifndef _SQLITE_FORMAT_H_
-#define _SQLITE_FORMAT_H_
+#ifndef _HA_MYSQLITE_H_
+#define _HA_MYSQLITE_H_
 
 
 #include "my_global.h"                   /* ulonglong */
@@ -264,4 +264,4 @@ public:
 };
 
 
-#endif /* _SQLITE_FORMAT_H_ */
+#endif /* _HA_MYSQLITE_H_ */
