@@ -1,2 +1,7 @@
 * Unit test
-  *Current limitation: You have to have GoogleTest and specify path by ./configure --with-gtest=/path*
+  #+BEGIN_SRC sh
+cmake -DGTEST_SRC=/path/to/gtest-1.x.y
+make
+./utilsTest
+...
+  #+END_SRC
