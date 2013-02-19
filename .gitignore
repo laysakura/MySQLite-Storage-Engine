@@ -2,4 +2,9 @@
 *.gch
 *.lo
 *.o
+*.so
 Makefile
+CMakeCache.txt
+CMakeFiles/
+*.cmake
+core
