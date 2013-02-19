@@ -90,11 +90,11 @@
 #include <sql_priv.h>
 #include <sql_class.h>
 #include <sql_plugin.h>
+#include <mysql/plugin.h>
 
 #include "ha_mysqlite.h"
 #include "utils.h"
 #include "probes_mysql.h"
-#include "udf_sqlite_db.cc"
 
 static handler *mysqlite_create_handler(handlerton *hton,
                                        TABLE_SHARE *table, 
@@ -990,10 +990,10 @@ mysql_declare_plugin(mysqlite)
   PLUGIN_LICENSE_GPL,
   mysqlite_init_func,                            /* Plugin Init */
   NULL,                                         /* Plugin Deinit */
-  0x0001 /* 0.1 */,
+  MYSQLITE_VERSION_HEX,
   func_status,                                  /* status variables */
   mysqlite_system_variables,                     /* system variables */
   NULL,                                         /* config options */
-  0,                                            /* flags */
+  0,
 }
 mysql_declare_plugin_end;
