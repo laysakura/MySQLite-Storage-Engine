@@ -1,0 +1,3 @@
+* MySQLite Storage Engine
+  MySQLite Storage Engine is a MySQL storage engine that aims to read/write SQLite database files.
+  Currently it does not fully work.
