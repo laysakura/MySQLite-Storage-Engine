@@ -172,32 +172,35 @@ private:
   FILE * const f_db;
   u8 *hdr_data;
 
-public:
   /*
   ** @note
   ** Constructor does not read(2) page contents.
-  ** Call this->init() after object is constructed.
+  ** Call this->read() after object is constructed.
   */
+  public:
   DbHeader(FILE * const f_db)
     : f_db(f_db)
   {
     assert(f_db);
     assert(hdr_data = (u8 *)malloc(DB_HEADER_SZ));
   }
+  public:
   ~DbHeader() {
     free(hdr_data);
   }
 
+  public:
   bool read() const {
     return mysqlite_fread(hdr_data, 0, DB_HEADER_SZ, f_db);
   }
 
+  public:
   Pgsz get_pg_sz() const {
     return u8s_to_val<Pgsz>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
   }
 
-private:
   // Prohibit default constructor
+  private:
   DbHeader() : f_db(NULL) {}
 };
 
@@ -212,12 +215,12 @@ public:
   const DbHeader * const db_header;
   Pgno pg_id;
 
-public:
   /*
   ** @note
   ** Constructor does not read(2) page contents.
-  ** Call this->init() after object is constructed.
+  ** Call this->read() after object is constructed.
   */
+  public:
   Page(FILE * const f_db,
        const DbHeader * const db_header,
        Pgno pg_id)
@@ -227,18 +230,20 @@ public:
     assert(db_header);
     assert(pg_data = (u8 *)malloc(db_header->get_pg_sz()));
   }
+  public:
   virtual ~Page() {
     free(pg_data);
   }
 
+  public:
   bool read() const {
     assert(db_header);
     Pgsz pg_sz = db_header->get_pg_sz();
     return mysqlite_fread(pg_data, pg_sz * (pg_id - 1), pg_sz, f_db);
   }
 
-private:
   // Prohibit default constructor
+  private:
   Page() : f_db(NULL), db_header(NULL) {}
 };
 
@@ -246,7 +251,7 @@ private:
 ** Btree page virtual class
 */
 class BtreePage : public Page {
-public:
+  public:
   BtreePage(FILE * const f_db,
             const DbHeader * const db_header,
             Pgno pg_id)
@@ -255,6 +260,7 @@ public:
 
   // Btree header info
 
+  protected:
   btree_page_type get_btree_type() const {
     return (btree_page_type)pg_data[
       pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_BTREETYPE_OFFSET :
@@ -262,6 +268,7 @@ public:
     ];
   }
 
+  protected:
   Pgsz get_freeblock_offset() const {
     return u8s_to_val<Pgsz>(
       &pg_data[
@@ -271,6 +278,7 @@ public:
       BTREEHDR_FREEBLOCKOFST_LEN);
   }
 
+  public:
   Pgsz get_n_cell() const {
     return u8s_to_val<Pgsz>(
       &pg_data[
@@ -280,6 +288,7 @@ public:
       BTREEHDR_NCELL_LEN);
   }
 
+  protected:
   Pgsz get_cell_content_area_offset() const {
     return u8s_to_val<Pgsz>(
       &pg_data[
@@ -289,6 +298,7 @@ public:
       BTREEHDR_CELLCONTENTAREAOFST_LEN);
   }
 
+  protected:
   u8 get_n_fragmentation() const {
     return pg_data[
       pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_NFRAGMENTATION_OFFSET :
@@ -296,6 +306,7 @@ public:
     ];
   }
 
+  protected:
   Pgno get_rightmost_pg() const {
     assert(get_btree_type() == INDEX_INTERIOR ||
            get_btree_type() == TABLE_INTERIOR);
@@ -307,7 +318,7 @@ public:
       BTREEHDR_RIGHTMOSTPG_LEN);
   }
 
-protected:
+  protected:
   bool is_valid_hdr() const {
     bool is_valid = true;
     /* Pgsz pg_sz = db_header->get_pg_sz(); */
@@ -338,15 +349,15 @@ protected:
     }
     return is_valid;
   }
-public:
 
   // Cell info
-protected:
+
   /*
   ** @param i  0-origin index.
   **
   ** @return  0 if i is out of larger than the actual number of cells.
   */
+  protected:
   Pgsz get_ith_cell_offset(Pgsz i) const {
     if (i >= get_n_cell()) return 0;
 
@@ -357,8 +368,8 @@ protected:
     if (pg_id == 1) cpa_start += DB_HEADER_SZ;
     return u8s_to_val<Pgsz>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
   }
-public:
 
+  protected:
   Pgno get_leftchild_pgno(Pgsz start_offset) const {
     return u8s_to_val<Pgno>(&pg_data[start_offset], BTREECELL_LECTCHILD_LEN);
   }
@@ -367,17 +378,21 @@ public:
   ** @return Payload sz. This can be longer than page sz
   **   when the cell has overflow pages.
   */
+  protected:
   u64 get_payload_sz(Pgsz start_offset, u8 *len) const {
     return varint2u64(&pg_data[start_offset], len);
   }
 
+  protected:
   u64 get_rowid(Pgsz start_offset, u8 *len) const {
     return varint2u64(&pg_data[start_offset], len);
   }
 
+  protected:
   Pgno get_overflow_pgno(Pgsz start_offset) const;
 
   // Page management
+  public:
   bool read() const {
     return Page::read() && is_valid_hdr();
   }
@@ -388,7 +403,7 @@ public:
 ** Table leaf page
 */
 class TableLeafPage : public BtreePage {
-public:
+  public:
   TableLeafPage(FILE * const f_db,
                 const DbHeader * const db_header,
                 Pgno pg_id)
