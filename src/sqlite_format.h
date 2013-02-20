@@ -321,29 +321,28 @@ class BtreePage : public Page {
   protected:
   bool is_valid_hdr() const {
     bool is_valid = true;
-    /* Pgsz pg_sz = db_header->get_pg_sz(); */
-    {
+    { // btree type
       btree_page_type type = get_btree_type();
       is_valid &= (type == INDEX_INTERIOR ||
                    type == TABLE_INTERIOR ||
                    type == INDEX_LEAF ||
                    type == TABLE_LEAF);
     }
-    {
+    { // TODO: freeblock offset check
       /* Pgsz offset = get_freeblock_offset(); */
       /* is_valid &= (0 <= offset && offset < pg_sz); */
     }
-    {
+    { // TODO: num of cell check
       /* Pgsz n_cell = get_n_cell(); */
       /* is_valid &= (0 <= n_cell && n_cell < pg_sz); */
     }
-    {
+    { // TODO: cell content area offset check
       /* Pgsz offset = get_cell_content_area_offset(); */
       /* is_valid &= (0 <= offset && offset <= pg_sz); */
       // cell_content_area_offset == pg_sz means
       // there are no cells yet
     }
-    {
+    { // TODO: num of fragmentation check
       /* Pgsz n_fragmentation = get_n_fragmentation(); */
       /* is_valid &= (0 <= n_fragmentation && n_fragmentation < pg_sz); */
     }
