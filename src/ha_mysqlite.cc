@@ -1,4 +1,4 @@
-/* Copyright (c) 2004, 2012, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) Sho Nakatani 2013. All rights reserved.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -15,6 +15,8 @@
 
 /**
   @file ha_mysqlite.cc
+
+  Example storage engine bundled in MySQL source is used as a template.
 
   @brief
   The ha_mysqlite engine is a stubbed storage engine for example purposes only;
