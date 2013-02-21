@@ -576,13 +576,13 @@ int ha_mysqlite::rnd_next(uchar *buf)
                        TRUE);
 
   static int read = 0;
-  if (read) {
+  if (read == 2) {
     // 読み終わり
     rc= HA_ERR_END_OF_FILE;
     MYSQL_READ_ROW_DONE(rc);
     DBUG_RETURN(rc);
   } else {
-    read = 1;
+    read++;
     // 読むというか返す
     rc= 0;
     MYSQL_READ_ROW_DONE(rc);
