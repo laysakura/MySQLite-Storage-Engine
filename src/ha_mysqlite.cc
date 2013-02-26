@@ -575,12 +575,7 @@ int ha_mysqlite::rnd_next(uchar *buf)
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
                        TRUE);
 
-  if (share->crashed) {
-    rc = HA_ERR_CRASHED_ON_USAGE;
-    goto end;
-  }
-
-  if (rc = find_current_row(buf)) {
+  if ((rc = find_current_row(buf))) {
     /* nakatani: find_current_rowの中で実際のSQLite DBのパースを行い，
     ** nakatani: bufをMySQLのレコードフォーマットに合わせて埋めている．
     */
@@ -608,6 +603,12 @@ int ha_mysqlite::rnd_next(uchar *buf)
 end:
   MYSQL_READ_ROW_DONE(rc);
   DBUG_RETURN(rc);
+}
+
+
+int ha_mysqlite::find_current_row(uchar *buf)
+{
+  return HA_ERR_END_OF_FILE;
 }
 
 
