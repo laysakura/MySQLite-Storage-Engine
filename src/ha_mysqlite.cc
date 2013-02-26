@@ -544,6 +544,9 @@ int ha_mysqlite::index_last(uchar *buf)
 int ha_mysqlite::rnd_init(bool scan)
 {
   DBUG_ENTER("ha_mysqlite::rnd_init");
+
+  this->rowid = 0;
+
   DBUG_RETURN(0);
 }
 
@@ -570,26 +573,37 @@ int ha_mysqlite::rnd_end()
 */
 int ha_mysqlite::rnd_next(uchar *buf)
 {
-  log("enter rnd_next\n");
-
   int rc;
   DBUG_ENTER("ha_mysqlite::rnd_next");
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
                        TRUE);
 
-  static int read = 0;
-  if (read == 2) {
-    // 読み終わり
-    rc= HA_ERR_END_OF_FILE;
-    MYSQL_READ_ROW_DONE(rc);
-    DBUG_RETURN(rc);
-  } else {
-    read++;
-    // 読むというか返す
-    rc= 0;
-    MYSQL_READ_ROW_DONE(rc);
-    DBUG_RETURN(rc);
+  ++this->rowid;
+
+  if ((rc = find_current_row(table_share->table_name.str, this->rowid, buf))) {
+    /* nakatani: find_current_rowの中で実際のSQLite DBのパースを行い，
+    ** nakatani: bufをMySQLのレコードフォーマットに合わせて埋めている．
+    */
+    /*
+    ** rc!=0のときは，何かのエラーか，もうレコードを出しきった(HA_ERR_END_OF_FILE)時．
+    */
+    goto end;
   }
+
+end:
+  MYSQL_READ_ROW_DONE(rc);
+  DBUG_RETURN(rc);
+}
+
+
+int ha_mysqlite::find_current_row(const string &table_name,
+                                  int rowid,
+                                  /* out */
+                                  uchar *buf)
+{
+  
+
+  return HA_ERR_END_OF_FILE;
 }
 
 

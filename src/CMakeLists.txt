@@ -15,8 +15,5 @@ SET(MYSQLITE_UTEST_EXECUTABLES utilsTest sqlite_formatTest)
 FOREACH(UTEST ${MYSQLITE_UTEST_EXECUTABLES})
   ADD_EXECUTABLE(${UTEST} ${UTEST}.cc)
   TARGET_LINK_LIBRARIES(${UTEST} ${GTEST_LDADD})
+  SET_TARGET_PROPERTIES(${UTEST} PROPERTIES COMPILE_FLAGS "-g -Wall -Wextra -Wunused -Wwrite-strings -Wno-strict-aliasing -O0 -Werror -Wno-unused-parameter -Woverloaded-virtual")
 ENDFOREACH(UTEST ${MYSQLITE_UTEST_EXECUTABLES})
-
-# add_executable(aaa utilsTest.cc)
-# target_link_libraries(aaa  ${GTEST_LDADD})
-

@@ -40,6 +40,12 @@
 #include "handler.h"                     /* handler */
 #include "my_base.h"                     /* ha_rows */
 
+#include <string>
+#include "sqlite_format.h"
+
+using namespace std;
+
+
 /** @brief
   Example_share is a class that will be shared among all open handlers.
   This example implements the minimum of what you will probably need.
@@ -64,6 +70,8 @@ class ha_mysqlite: public handler
   THR_LOCK_DATA lock;      ///< MySQL lock
   Mysqlite_share *share;    ///< Shared lock info
   Mysqlite_share *get_share(); ///< Get the share
+
+  Rowid rowid;  // rowid currently reading
 
 public:
   ha_mysqlite(handlerton *hton, TABLE_SHARE *table_arg);
@@ -261,6 +269,11 @@ public:
 
   THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to,
                              enum thr_lock_type lock_type);     ///< required
+
+  int find_current_row(const string &table_name,
+                       int rowid,
+                       /* out */
+                       uchar *buf);
 };
 
 

@@ -52,7 +52,7 @@ bool copy_sqlite_table_formats(FILE *f_db,
       vector<Pgsz> cols_offset, cols_len;
       vector<sqlite_type> cols_type;
 
-      page1.get_icell_cols(
+      page1.get_ith_cell_cols(
         cell,
         &rowid,
         &overflow_pgno, &overflown_payload_sz,
