@@ -585,21 +585,6 @@ int ha_mysqlite::rnd_next(uchar *buf)
     goto end;
   }
 
-  rc= 0;
-
-
-  // static int read = 0;
-  // if (read == 2) {
-  //   // 読み終わり
-  //   rc= HA_ERR_END_OF_FILE;
-  //   goto end;
-  // } else {
-  //   read++;
-  //   // 読むというか返す
-  //   rc= 0;
-  //   goto end;
-  // }
-
 end:
   MYSQL_READ_ROW_DONE(rc);
   DBUG_RETURN(rc);
@@ -608,6 +593,8 @@ end:
 
 int ha_mysqlite::find_current_row(uchar *buf)
 {
+  
+
   return HA_ERR_END_OF_FILE;
 }
 
