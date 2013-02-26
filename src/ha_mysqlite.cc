@@ -570,26 +570,44 @@ int ha_mysqlite::rnd_end()
 */
 int ha_mysqlite::rnd_next(uchar *buf)
 {
-  log("enter rnd_next\n");
-
   int rc;
   DBUG_ENTER("ha_mysqlite::rnd_next");
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
                        TRUE);
 
-  static int read = 0;
-  if (read == 2) {
-    // 読み終わり
-    rc= HA_ERR_END_OF_FILE;
-    MYSQL_READ_ROW_DONE(rc);
-    DBUG_RETURN(rc);
-  } else {
-    read++;
-    // 読むというか返す
-    rc= 0;
-    MYSQL_READ_ROW_DONE(rc);
-    DBUG_RETURN(rc);
+  if (share->crashed) {
+    rc = HA_ERR_CRASHED_ON_USAGE;
+    goto end;
   }
+
+  if (rc = find_current_row(buf)) {
+    /* nakatani: find_current_rowの中で実際のSQLite DBのパースを行い，
+    ** nakatani: bufをMySQLのレコードフォーマットに合わせて埋めている．
+    */
+    /*
+    ** rc!=0のときは，何かのエラーか，もうレコードを出しきった(HA_ERR_END_OF_FILE)時．
+    */
+    goto end;
+  }
+
+  rc= 0;
+
+
+  // static int read = 0;
+  // if (read == 2) {
+  //   // 読み終わり
+  //   rc= HA_ERR_END_OF_FILE;
+  //   goto end;
+  // } else {
+  //   read++;
+  //   // 読むというか返す
+  //   rc= 0;
+  //   goto end;
+  // }
+
+end:
+  MYSQL_READ_ROW_DONE(rc);
+  DBUG_RETURN(rc);
 }
 
 
