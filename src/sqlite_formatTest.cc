@@ -114,7 +114,7 @@ TEST(TableLeafPage, get_ith_cell_cols_2CellsTable)
       vector<Pgsz> cols_offset, cols_len;
       vector<sqlite_type> cols_type;
 
-      tbl_leaf_page.get_icell_cols(
+      tbl_leaf_page.get_ith_cell_cols(
         row,
         &rowid,
         &overflow_pgno, &overflown_payload_sz,
@@ -161,7 +161,7 @@ TEST(TableLeafPage, get_ith_cell_cols_GetTableSchema)
       vector<Pgsz> cols_offset, cols_len;
       vector<sqlite_type> cols_type;
 
-      tbl_leaf_page.get_icell_cols(
+      tbl_leaf_page.get_ith_cell_cols(
         row,
         &rowid,
         &overflow_pgno, &overflown_payload_sz,
@@ -185,4 +185,11 @@ TEST(TableLeafPage, get_ith_cell_cols_GetTableSchema)
 TEST(TableLeafPage, DISABLED_get_ith_cell_cols_OverflowPage)
 {
   // TODO: write
+}
+
+
+// TableBtree
+TEST(TableBtree, get_record_by_key)
+{
+  
 }

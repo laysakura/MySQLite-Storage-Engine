@@ -70,6 +70,7 @@
 */
 typedef u32 Pgno;
 typedef u16 Pgsz;
+typedef u64 Rowid;
 
 typedef enum btree_page_type {
   INDEX_INTERIOR     = 2,
@@ -436,13 +437,13 @@ class TableLeafPage : public BtreePage {
   ** @return false on error
   */
   public:
-  bool get_icell_cols(Pgsz i,
-                      /*out*/
-                      u64 *rowid,
-                      Pgno *overflow_pgno, u64 *overflown_payload_sz,
-                      vector<Pgsz> &cols_offset,
-                      vector<Pgsz> &cols_len,
-                      vector<sqlite_type> &cols_type) const
+  bool get_ith_cell_cols(Pgsz i,
+                         /*out*/
+                         u64 *rowid,
+                         Pgno *overflow_pgno, u64 *overflown_payload_sz,
+                         vector<Pgsz> &cols_offset,
+                         vector<Pgsz> &cols_len,
+                         vector<sqlite_type> &cols_type) const
   {
     u8 len;
     Pgsz offset = get_ith_cell_offset(i);
@@ -495,6 +496,17 @@ class TableLeafPage : public BtreePage {
     *overflow_pgno = u8s_to_val<Pgno>(&pg_data[offset], BTREECELL_OVERFLOWPGNO_LEN);
     return true;
   }
+};
+
+
+class TableBtree {
+  /* この辺にBtree/B+treeをストレスなくtraverseする関数を設けたい． */
+  /*   何を定義すれば良いのかいまいち分からないけど，結局は， */
+  /*   「レコード(またはインデックス)内部のデータ構造が隠蔽されていても， */
+  /*     キー(テーブルならrowid, インデックスならindex key)を入力したらレコードが返ってくる」 */
+  /*   的な関数が欲しいだけ． */
+  /*   その関数をまずざっくり記述して，Btreeの使用も決めていく． */
+  /*   というかどうせいつインデックス使われるかも知らないわけだし，まずはインデックスガン無視で作ろう． */
 };
 
 

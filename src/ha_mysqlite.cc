@@ -544,6 +544,9 @@ int ha_mysqlite::index_last(uchar *buf)
 int ha_mysqlite::rnd_init(bool scan)
 {
   DBUG_ENTER("ha_mysqlite::rnd_init");
+
+  this->rowid = 0;
+
   DBUG_RETURN(0);
 }
 
@@ -575,7 +578,9 @@ int ha_mysqlite::rnd_next(uchar *buf)
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
                        TRUE);
 
-  if ((rc = find_current_row(buf))) {
+  ++this->rowid;
+
+  if ((rc = find_current_row(table_share->table_name.str, this->rowid, buf))) {
     /* nakatani: find_current_rowの中で実際のSQLite DBのパースを行い，
     ** nakatani: bufをMySQLのレコードフォーマットに合わせて埋めている．
     */
@@ -591,7 +596,10 @@ end:
 }
 
 
-int ha_mysqlite::find_current_row(uchar *buf)
+int ha_mysqlite::find_current_row(const string &table_name,
+                                  int rowid,
+                                  /* out */
+                                  uchar *buf)
 {
   
 
