@@ -277,7 +277,7 @@ class BtreePage : public Page {
 
   // Btree header info
 
-  protected:
+  public:
   btree_page_type get_btree_type() const {
     return (btree_page_type)pg_data[
       pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_BTREETYPE_OFFSET :
@@ -500,13 +500,58 @@ class TableLeafPage : public BtreePage {
 
 
 class TableBtree {
-  /* この辺にBtree/B+treeをストレスなくtraverseする関数を設けたい． */
-  /*   何を定義すれば良いのかいまいち分からないけど，結局は， */
-  /*   「レコード(またはインデックス)内部のデータ構造が隠蔽されていても， */
-  /*     キー(テーブルならrowid, インデックスならindex key)を入力したらレコードが返ってくる」 */
-  /*   的な関数が欲しいだけ． */
-  /*   その関数をまずざっくり記述して，Btreeの使用も決めていく． */
-  /*   というかどうせいつインデックス使われるかも知らないわけだし，まずはインデックスガン無視で作ろう． */
+private:
+  TableLeafPage cur_page;  // TODO: Might conflict to page cache
+  Pgsz cur_cell;           // TODO: cur_page(pgno, materialized by page cache) and cur_cell
+                           // TODO: should treated as cursor
+
+  public:
+  TableBtree()
+    : cur_page(NULL), cur_cell(0)
+  {}
+  public:
+  ~TableBtree()
+  {}
+
+  public:
+  bool get_record_by_key(const FILE *f_db, Pgno root_pgno, u64 key,
+                         /* out */
+                         vector<u8> &rec_data) {
+    /* root page (というか interior page) から，rowidに即した子を探す方法 */
+    /* 1. i番目のcellを取ると，そのcellにはrowid(i-rowidという)とleft child pgnoが入ってる */
+    /* 2. もしi-rowidが探しているrowidだったら，そのleft childに行く */
+    /* 3. もしi-rowid < finding rowid だったら，もう行き過ぎたので，(i-1)-rowid のleft childに行く */
+    /* 4. もしi-rowid > finding rowid だったら，まだ探索を続けるので，(i+1)-rowidを見に行く(1.へ) */
+
+    DbHeader db_header(f_db);
+    if (!db_header.read()) {  // TODO: Cache for db_header
+      log("Failed to read DB file");
+      return false;
+    }
+
+    return get_record_by_key_aux(f_db, db_header, root_pgno, key, rec_data);
+  }
+
+  /*
+  ** Find a record from key recursively
+  */
+  private:
+  bool get_record_by_key_aux(const FILE *f_db, DbHeader *db_header,
+                             Pgno pgno, u64 key,
+                             /* out */
+                             vector<u8> &rec_data)
+  {
+    TBtreePage root_page(f_db, db_header, root_pgno);
+    if (!root_page.read()) {  // TODO: Cache
+      log("Failed to read DB file");
+      return false;
+    }
+
+    btree_page_type btree_type = root_page.get_btree_type();
+    if (btree_type == TABLE_LEAF) {
+      
+    }
+  }
 };
 
 

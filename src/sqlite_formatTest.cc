@@ -189,7 +189,32 @@ TEST(TableLeafPage, DISABLED_get_ith_cell_cols_OverflowPage)
 
 
 // TableBtree
-TEST(TableBtree, get_record_by_key)
+TEST(TableBtree, get_record_by_key_NoInteriorPage)
 {
-  
+  // 基本的に，メモリコピーを避けるのはそこそこ難しい．
+  // Pageっていう単位でメモリ状にmaterializeしているけど，そのページっていうのは永続的なデータ構造ではないので．
+  // TODO: 将来的にメモリコピーを減らすなら，キャッシュ構造(size-configurableな)を儲ける必要がある．
+
+  // TODO: overflowページへの対応
+
+  // keyからrecordを探す方法
+  // rootpageはgiven
+  // 普通にBtreeのtraverseをしていく．その際，各ページをreadしまくるけど，それはキャッシュがないからと諦める
+  // レコードを手に入れたら，それはメモリコピーしてやる．vector<u8>とかが楽かな?
+
+  FILE *f_db = open_sqlite_db("t/db/TableBtree-NoInteriorPage.sqlite");
+  ASSERT_TRUE(f_db);
+
+  {
+    vector<u8> rec_data;
+    ASSERT_TRUE(get_record_by_key(f_db, 1, 1, rec_data));
+    ASSERT_TRUE(rec_data.length() > 0 && rec_data.length() < 1000);  // Validity check for rec_data
+  }
+  {
+    vector<u8> rec_data;
+    ASSERT_TRUE(get_record_by_key(f_db, 1, 2, rec_data));
+    ASSERT_TRUE(rec_data.length() > 0 && rec_data.length() < 1000);  // Validity check for rec_data
+  }
+
+  fclose(f_db);
 }
