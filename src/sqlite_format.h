@@ -514,9 +514,9 @@ private:
   {}
 
   public:
-  bool get_record_by_key(const FILE *f_db, Pgno root_pgno, u64 key,
-                         /* out */
-                         vector<u8> &rec_data) {
+  bool get_cell_by_key(const FILE *f_db, Pgno root_pgno, u64 key,
+                       /* out */
+                       Pgno *rec_pgno, Pgsz *ith_cell_in_pg) {
     /* root page (というか interior page) から，rowidに即した子を探す方法 */
     /* 1. i番目のcellを取ると，そのcellにはrowid(i-rowidという)とleft child pgnoが入ってる */
     /* 2. もしi-rowidが探しているrowidだったら，そのleft childに行く */
@@ -529,27 +529,58 @@ private:
       return false;
     }
 
-    return get_record_by_key_aux(f_db, db_header, root_pgno, key, rec_data);
+    return get_cell_by_key_aux(f_db, db_header, root_pgno, key, rec_data);
   }
 
   /*
   ** Find a record from key recursively
   */
   private:
-  bool get_record_by_key_aux(const FILE *f_db, DbHeader *db_header,
-                             Pgno pgno, u64 key,
-                             /* out */
-                             vector<u8> &rec_data)
+  bool get_cell_by_key_aux(const FILE *f_db, DbHeader *db_header,
+                           Pgno pgno, u64 key,
+                           /* out */
+                           Pgno *rec_pgno, Pgsz *ith_cell_in_pg)
   {
-    TBtreePage root_page(f_db, db_header, root_pgno);
-    if (!root_page.read()) {  // TODO: Cache
+    BtreePage cur_page(f_db, db_header, root_pgno);
+    if (!cur_page.read()) {  // TODO: Cache
       log("Failed to read DB file");
       return false;
     }
 
-    btree_page_type btree_type = root_page.get_btree_type();
+    btree_page_type btree_type = cur_page.get_btree_type();
+    assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
     if (btree_type == TABLE_LEAF) {
-      
+      TableLeafPage cur_leaf_page = cur_page;  // TODO: downcast
+      int n_cell = cur_leaf_page.get_n_cell();
+      for (int i = 0; i < n_cell; ++i) {
+        assert(cur_leaf_page.get_ith_cell_cols(i, &rowid, NULL, NULL, NULL, NULL, NULL));
+        if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
+          // found a cell to return.
+          *rec_pgno = pgno;
+          *ith_cell_in_pg = i;
+          return true;
+        }
+      }
+      return false;
+    }
+    else if (btree_type == TABLE_INTERIOR) {
+      TableInteriorPage cur_interior_page = cur_page;  // TODO: downcast
+      int n_cell = cur_interior_page.get_n_cell();
+      u64 prev_rowid = 0;
+      for (int i = 0; i < n_cell; ++i) {
+        Pgno left_child_pgno;
+        u64 rowid;
+        assert(cur_interior_page.get_ith_cell(i, &left_child_pgno, &rowid));
+        if (prev_rowid < key && key <= rowid) {
+          // found next page to traverse
+          return get_cell_by_key_aux(f_db, db_header, left_child_pgno, key,
+                                     rec_pgno, ith_cell_in_pg);
+        }
+      }
+      // cell corresponding the key is in the rightmost child page
+      return get_cell_by_key_aux(f_db, db_header,
+                                 cur_interior_page.get_rightmost_pg(), key,
+                                 rec_pgno, ith_cell_in_pg);
     }
   }
 };
