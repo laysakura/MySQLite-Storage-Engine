@@ -207,12 +207,40 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage)
     Pgsz ith_cell_in_pg;
     ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 2, &rec_pgno, &ith_cell_in_pg));
     ASSERT_EQ(rec_pgno, 1u);
-    ASSERT_EQ(ith_cell_in_pg, 1u);
+    ASSERT_EQ(ith_cell_in_pg, 1);
   }
   {
     Pgno rec_pgno;
     Pgsz ith_cell_in_pg;
     ASSERT_FALSE(tbl_btree.get_cell_by_key(f_db, 1, 3, &rec_pgno, &ith_cell_in_pg));
+  }
+
+  fclose(f_db);
+}
+TEST(TableBtree, get_record_by_key_NoInteriorPage_fragmented)
+{
+  FILE *f_db = open_sqlite_db("t/db/TableBtree-NoInteriorPage-fragmented.sqlite");
+  ASSERT_TRUE(f_db);
+
+  TableBtree tbl_btree(f_db);
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 1, &rec_pgno, &ith_cell_in_pg));
+    ASSERT_EQ(rec_pgno, 1u);
+    ASSERT_EQ(ith_cell_in_pg, 0);
+  }
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_FALSE(tbl_btree.get_cell_by_key(f_db, 1, 2, &rec_pgno, &ith_cell_in_pg));
+  }
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 3, &rec_pgno, &ith_cell_in_pg));
+    ASSERT_EQ(rec_pgno, 1u);
+    ASSERT_EQ(ith_cell_in_pg, 1);
   }
 
   fclose(f_db);
