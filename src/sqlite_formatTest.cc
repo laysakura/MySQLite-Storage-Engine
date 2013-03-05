@@ -199,15 +199,15 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage)
     Pgno rec_pgno;
     Pgsz ith_cell_in_pg;
     ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 1, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_TRUE(rec_pgno == 1);
-    ASSERT_TRUE(ith_cell_in_pg == 1);
+    ASSERT_EQ(rec_pgno, 1u);
+    ASSERT_EQ(ith_cell_in_pg, 0);
   }
   {
     Pgno rec_pgno;
     Pgsz ith_cell_in_pg;
     ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 2, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_TRUE(rec_pgno == 1);
-    ASSERT_TRUE(ith_cell_in_pg == 2);
+    ASSERT_EQ(rec_pgno, 1u);
+    ASSERT_EQ(ith_cell_in_pg, 1u);
   }
 
   fclose(f_db);

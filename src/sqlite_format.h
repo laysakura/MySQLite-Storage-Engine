@@ -580,7 +580,7 @@ private:
     btree_page_type btree_type = cur_page->get_btree_type();
     assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
     if (btree_type == TABLE_LEAF) {
-      TableLeafPage *cur_leaf_page = dynamic_cast<TableLeafPage *>(cur_page);  // TODO: downcast
+      TableLeafPage *cur_leaf_page = static_cast<TableLeafPage *>(cur_page);  // TODO: downcast
       int n_cell = cur_leaf_page->get_n_cell();
       for (int i = 0; i < n_cell; ++i) {
         u64 rowid = cur_leaf_page->get_ith_cell_rowid(i);
@@ -597,7 +597,7 @@ private:
       return false;
     }
     else if (btree_type == TABLE_INTERIOR) {
-      TableInteriorPage *cur_interior_page = dynamic_cast<TableInteriorPage *>(cur_page);  // TODO: downcast
+      TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(cur_page);
       int n_cell = cur_interior_page->get_n_cell();
       u64 prev_rowid = 0;
       for (int i = 0; i < n_cell; ++i) {
