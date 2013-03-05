@@ -515,6 +515,11 @@ class TableLeafPage : public BtreePage {
 /*
 ** Table interior page
 */
+struct TableInteriorPageCell {
+  Pgno left_child_pgno;
+  u64 rowid;
+};
+
 class TableInteriorPage : public BtreePage {
   public:
   TableInteriorPage(FILE * const f_db,
@@ -526,14 +531,14 @@ class TableInteriorPage : public BtreePage {
   public:
   void get_ith_cell(int i,
                     /* out */
-                    Pgno *left_child_pgno, u64 *rowid) const {
+                    struct TableInteriorPageCell *cell) const {
     u8 len;
     Pgsz offset = get_ith_cell_offset(i);
 
-    *left_child_pgno = u8s_to_val<Pgno>(&pg_data[offset], sizeof(Pgno));
+    cell->left_child_pgno = u8s_to_val<Pgno>(&pg_data[offset], sizeof(Pgno));
     offset += sizeof(Pgno);
 
-    *rowid = get_rowid(offset, &len);
+    cell->rowid = get_rowid(offset, &len);
   }
 };
 
@@ -579,8 +584,10 @@ private:
 
     btree_page_type btree_type = cur_page->get_btree_type();
     assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
+
     if (btree_type == TABLE_LEAF) {
-      TableLeafPage *cur_leaf_page = static_cast<TableLeafPage *>(cur_page);  // TODO: downcast
+      // find a cell with its rowid == key
+      TableLeafPage *cur_leaf_page = static_cast<TableLeafPage *>(cur_page);
       int n_cell = cur_leaf_page->get_n_cell();
       for (int i = 0; i < n_cell; ++i) {
         u64 rowid = cur_leaf_page->get_ith_cell_rowid(i);
@@ -597,17 +604,17 @@ private:
       return false;
     }
     else if (btree_type == TABLE_INTERIOR) {
+      // jump to one of children nodes
       TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(cur_page);
       int n_cell = cur_interior_page->get_n_cell();
       u64 prev_rowid = 0;
       for (int i = 0; i < n_cell; ++i) {
-        Pgno left_child_pgno;
-        u64 rowid;
-        cur_interior_page->get_ith_cell(i, &left_child_pgno, &rowid);
-        if (prev_rowid < key && key <= rowid) {
+        struct TableInteriorPageCell cell;
+        cur_interior_page->get_ith_cell(i, &cell);
+        if (prev_rowid < key && key <= cell.rowid) {
           // found next page to traverse
           delete cur_page;
-          return get_cell_by_key_aux(f_db, left_child_pgno, key,
+          return get_cell_by_key_aux(f_db, cell.left_child_pgno, key,
                                      rec_pgno, ith_cell_in_pg);
         }
       }
