@@ -323,7 +323,7 @@ class BtreePage : public Page {
     ];
   }
 
-  protected:
+  public:
   Pgno get_rightmost_pg() const {
     assert(get_btree_type() == INDEX_INTERIOR ||
            get_btree_type() == TABLE_INTERIOR);
@@ -496,92 +496,135 @@ class TableLeafPage : public BtreePage {
     *overflow_pgno = u8s_to_val<Pgno>(&pg_data[offset], BTREECELL_OVERFLOWPGNO_LEN);
     return true;
   }
+
+  /*
+  ** @param i  Specifies i-th cell in the page (0-origin).
+  */
+  public:
+  u64 get_ith_cell_rowid(Pgsz i) const
+  {
+    u8 len;
+    Pgsz offset = get_ith_cell_offset(i);
+    get_payload_sz(offset, &len);
+    offset += len;
+    return get_rowid(offset, &len);
+  }
+};
+
+
+/*
+** Table interior page
+*/
+class TableInteriorPage : public BtreePage {
+  public:
+  TableInteriorPage(FILE * const f_db,
+                    const DbHeader * const db_header,
+                    Pgno pg_id)
+   : BtreePage(f_db, db_header, pg_id)
+  {}
+
+  public:
+  void get_ith_cell(int i,
+                    /* out */
+                    Pgno *left_child_pgno, u64 *rowid) const {
+    u8 len;
+    Pgsz offset = get_ith_cell_offset(i);
+
+    *left_child_pgno = u8s_to_val<Pgno>(&pg_data[offset], sizeof(Pgno));
+    offset += sizeof(Pgno);
+
+    *rowid = get_rowid(offset, &len);
+  }
 };
 
 
 class TableBtree {
 private:
-  TableLeafPage cur_page;  // TODO: Might conflict to page cache
-  Pgsz cur_cell;           // TODO: cur_page(pgno, materialized by page cache) and cur_cell
-                           // TODO: should treated as cursor
+  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
+  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
+                            // TODO: should treated as cursor
+  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
+
+  FILE *f_db;
+  DbHeader db_header;
 
   public:
-  TableBtree()
-    : cur_page(NULL), cur_cell(0)
-  {}
+  TableBtree(FILE *f_db)
+    : cur_page(NULL), cur_cell(0), f_db(f_db), db_header(f_db)
+  {
+    assert(db_header.read());
+  }
   public:
   ~TableBtree()
   {}
 
-  public:
-  bool get_cell_by_key(const FILE *f_db, Pgno root_pgno, u64 key,
-                       /* out */
-                       Pgno *rec_pgno, Pgsz *ith_cell_in_pg) {
-    /* root page (というか interior page) から，rowidに即した子を探す方法 */
-    /* 1. i番目のcellを取ると，そのcellにはrowid(i-rowidという)とleft child pgnoが入ってる */
-    /* 2. もしi-rowidが探しているrowidだったら，そのleft childに行く */
-    /* 3. もしi-rowid < finding rowid だったら，もう行き過ぎたので，(i-1)-rowid のleft childに行く */
-    /* 4. もしi-rowid > finding rowid だったら，まだ探索を続けるので，(i+1)-rowidを見に行く(1.へ) */
-
-    DbHeader db_header(f_db);
-    if (!db_header.read()) {  // TODO: Cache for db_header
-      log("Failed to read DB file");
-      return false;
-    }
-
-    return get_cell_by_key_aux(f_db, db_header, root_pgno, key, rec_data);
-  }
+  private:
+  TableBtree();
 
   /*
   ** Find a record from key recursively
   */
   private:
-  bool get_cell_by_key_aux(const FILE *f_db, DbHeader *db_header,
+  bool get_cell_by_key_aux(FILE *f_db,
                            Pgno pgno, u64 key,
                            /* out */
                            Pgno *rec_pgno, Pgsz *ith_cell_in_pg)
   {
-    BtreePage cur_page(f_db, db_header, root_pgno);
-    if (!cur_page.read()) {  // TODO: Cache
+    BtreePage *cur_page = new BtreePage(f_db, &db_header, pgno);
+    if (!cur_page->read()) {  // TODO: Cache
       log("Failed to read DB file");
+      delete cur_page;
       return false;
     }
 
-    btree_page_type btree_type = cur_page.get_btree_type();
+    btree_page_type btree_type = cur_page->get_btree_type();
     assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
     if (btree_type == TABLE_LEAF) {
-      TableLeafPage cur_leaf_page = cur_page;  // TODO: downcast
-      int n_cell = cur_leaf_page.get_n_cell();
+      TableLeafPage *cur_leaf_page = dynamic_cast<TableLeafPage *>(cur_page);  // TODO: downcast
+      int n_cell = cur_leaf_page->get_n_cell();
       for (int i = 0; i < n_cell; ++i) {
-        assert(cur_leaf_page.get_ith_cell_cols(i, &rowid, NULL, NULL, NULL, NULL, NULL));
+        u64 rowid = cur_leaf_page->get_ith_cell_rowid(i);
+
         if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
           // found a cell to return.
           *rec_pgno = pgno;
           *ith_cell_in_pg = i;
+          delete cur_page;
           return true;
         }
       }
+      delete cur_page;
       return false;
     }
     else if (btree_type == TABLE_INTERIOR) {
-      TableInteriorPage cur_interior_page = cur_page;  // TODO: downcast
-      int n_cell = cur_interior_page.get_n_cell();
+      TableInteriorPage *cur_interior_page = dynamic_cast<TableInteriorPage *>(cur_page);  // TODO: downcast
+      int n_cell = cur_interior_page->get_n_cell();
       u64 prev_rowid = 0;
       for (int i = 0; i < n_cell; ++i) {
         Pgno left_child_pgno;
         u64 rowid;
-        assert(cur_interior_page.get_ith_cell(i, &left_child_pgno, &rowid));
+        cur_interior_page->get_ith_cell(i, &left_child_pgno, &rowid);
         if (prev_rowid < key && key <= rowid) {
           // found next page to traverse
-          return get_cell_by_key_aux(f_db, db_header, left_child_pgno, key,
+          delete cur_page;
+          return get_cell_by_key_aux(f_db, left_child_pgno, key,
                                      rec_pgno, ith_cell_in_pg);
         }
       }
       // cell corresponding the key is in the rightmost child page
-      return get_cell_by_key_aux(f_db, db_header,
-                                 cur_interior_page.get_rightmost_pg(), key,
+      delete cur_page;
+      return get_cell_by_key_aux(f_db,
+                                 cur_interior_page->get_rightmost_pg(), key,
                                  rec_pgno, ith_cell_in_pg);
     }
+    else return false;  // Asserted not to come here
+  }
+  public:
+  bool get_cell_by_key(FILE *f_db, Pgno root_pgno, u64 key,
+                       /* out */
+                       Pgno *rec_pgno, Pgsz *ith_cell_in_pg) {
+    return get_cell_by_key_aux(f_db, root_pgno, key,
+                               rec_pgno, ith_cell_in_pg);
   }
 };
 
