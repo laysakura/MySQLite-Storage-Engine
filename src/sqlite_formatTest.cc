@@ -209,6 +209,11 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage)
     ASSERT_EQ(rec_pgno, 1u);
     ASSERT_EQ(ith_cell_in_pg, 1u);
   }
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_FALSE(tbl_btree.get_cell_by_key(f_db, 1, 3, &rec_pgno, &ith_cell_in_pg));
+  }
 
   fclose(f_db);
 }
