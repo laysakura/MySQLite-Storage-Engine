@@ -245,3 +245,52 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage_fragmented)
 
   fclose(f_db);
 }
+TEST(TableBtree, get_record_by_key_10000rec_4tab_4096psize)
+{
+  FILE *f_db = open_sqlite_db("t/db/TableBtree-10000rec-4tab-4096psize.sqlite");
+  ASSERT_TRUE(f_db);
+
+  TableBtree tbl_btree(f_db);
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 1, &rec_pgno, &ith_cell_in_pg));
+    ASSERT_EQ(rec_pgno, 6u);
+    ASSERT_EQ(ith_cell_in_pg, 0);
+  }
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 200, &rec_pgno, &ith_cell_in_pg));
+    ASSERT_EQ(rec_pgno, 6u);
+    ASSERT_EQ(ith_cell_in_pg, 199);
+  }
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 421, &rec_pgno, &ith_cell_in_pg));
+    ASSERT_EQ(rec_pgno, 6u);
+    ASSERT_EQ(ith_cell_in_pg, 420);
+  }
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 422, &rec_pgno, &ith_cell_in_pg));
+    ASSERT_EQ(rec_pgno, 7u);
+    ASSERT_EQ(ith_cell_in_pg, 0);
+  }
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 2500, &rec_pgno, &ith_cell_in_pg));
+    ASSERT_EQ(rec_pgno, 30u);
+    ASSERT_EQ(ith_cell_in_pg, 38);
+  }
+  {
+    Pgno rec_pgno;
+    Pgsz ith_cell_in_pg;
+    ASSERT_FALSE(tbl_btree.get_cell_by_key(f_db, 2, 2501, &rec_pgno, &ith_cell_in_pg));
+  }
+
+  fclose(f_db);
+}
