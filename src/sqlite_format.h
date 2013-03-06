@@ -441,39 +441,57 @@ public:
   Payload()
     : cols_offset(0), cols_len(0), cols_type(0), data(NULL)
   {}
-};
 
-struct PayloadInfo {
-  vector<Pgsz> cols_offset;
-  vector<Pgsz> cols_len;
-  vector<sqlite_type> cols_type;
+
+  /*
+  ** Read from this->data and fill cols_*.
+  **
+  ** @see  Extracting SQLite records - Figure 4. SQLite record format
+  */
+  public:
+  bool digest_data() {
+    Pgsz offset = 0;
+    u8 len;
+    Pgsz hdr_sz = varint2u64(&data[offset], &len);
+    offset += len;
+
+    // Read column headers
+    for (u64 read_hdr_sz = len; read_hdr_sz < hdr_sz; ) {
+      Pgsz stype = varint2u64(&data[offset], &len);
+      offset += len;
+      read_hdr_sz += len;
+
+      if (stype <= 9) {
+        cols_type.push_back(static_cast<sqlite_type>(stype));
+      } else if (stype >= 12) {
+        cols_type.push_back(stype % 2 == 0 ? ST_BLOB : ST_TEXT);
+      } else {
+        log("Invalid sqlite type (stype=%d)\n", stype);
+        return false;
+      }
+      cols_len.push_back(stype2len(stype));
+    }
+
+    // Read column bodies
+    for (vector<Pgsz>::iterator it = cols_len.begin();
+         it != cols_len.end();
+         ++it)
+    {
+      cols_offset.push_back(offset);
+      offset += *it;
+    }
+    return true;
+  }
+
 };
 
 struct TableLeafPageCell {
   u64 payload_sz;
+  u64 payload_sz_in_origpg;
   u64 rowid;
   Payload payload;
   u32 overflow_pgno;  // First overflow page num. 0 when cell has no overflow page.
 };
-
-/* やりたいこと: */
-/* 1. payloadを，オーバフローページも含めてただのバイト列として取得 */
-/* 2. そのバイト列について，ヘッダとvalueを読んで，今のPayloadInfoみたいな情報を取れるようにする */
-/* 3. バイト列とPayloadInfoを合わせて，各カラムのデータを正しく読めるようにする(現在のテストのように) */
-
-/* 懸念: */
-/* なるべくコピーは減らしたい． */
-/* 現在，get_ith_cell() はTableLeafPageクラスのメソッドであり，ということは， */
-/* TableLeafPage::read()は呼ばれた後だと仮定して良い． */
-/* なので，少なくともオーバフローページが存在しないときは，コピーなしで3.までいけるはずである． */
-/* オーバフローページがあるときは...素直にコピーするくらいしか思いつかない． */
-/* ほしいインターフェイスは， */
-/* a. 3.の後に，Payloadクラスのオブジェクトでもできている．Payloadクラスは， */
-/*    i番目カラムの型，生データを返す，くらいのことができればよい． */
-/*    その生データというのが，オーバフローページなしのときは TableLeafPage->pg_data で， */
-/*    オーバフローページありのときはコピーである，って感じ． */
-/* b. コピーするときはコピー先はどうしよう? もしオーバフローページがあることが発覚したら外部からvector<u8>を */
-/*    提供する感じ? */
 
 class TableLeafPage : public BtreePage {
   public:
@@ -508,14 +526,14 @@ class TableLeafPage : public BtreePage {
     cell->rowid = get_rowid(offset, &len);
     offset += len;
 
+    cell->payload.data = &pg_data[offset];
+
     // Overflow page treatment
     // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
-    Pgsz payload_sz_inpg;
-    Pgsz usable_sz = db_header.get_pg_sz() - db_header.get_reserved_space();
+    Pgsz usable_sz = db_header->get_pg_sz() - db_header->get_reserved_space();
     Pgsz max_local = usable_sz - 35;
     if (cell->payload_sz <= max_local) {
       // no overflow page
-      payload_sz_inpg = cell->payload_sz;
       cell->overflow_pgno = 0;
     } else {
       // overflow page exists
@@ -523,56 +541,64 @@ class TableLeafPage : public BtreePage {
       Pgsz local_sz = min_local + (cell->payload_sz - min_local) % (usable_sz - 4);
       cell->payload_sz_in_origpg = local_sz > max_local ? min_local : local_sz;
 
-      cell->overflow_pgno = u8s_to_val<Pgno>(pg_data[offset + cell->payload_sz_in_origpg],
+      cell->overflow_pgno = u8s_to_val<Pgno>(&pg_data[offset + cell->payload_sz_in_origpg],
                                              BTREECELL_OVERFLOWPGNO_LEN);
-      return false;  // caller should call 
+      return false;  // caller should call
+                     // get_ith_cell(Pgsz i, TableLeafPageCell *cell,
+                     //              vector<u8> *buf_overflown_payload)
+                     // later.
     }
 
-    { // Read payload
-      // @see
-      // Extracting SQLite records - Figure 4. SQLite record format
-      Pgsz payload_start_offset = offset;
-      Pgsz hdr_sz = varint2u64(&cell->payload.data[offset], &len);
-      offset += len;
-
-      // Read column headers
-      for (u64 read_hdr_sz = len; read_hdr_sz < hdr_sz; ) {
-        Pgsz stype = varint2u64(&cell->payload.data[offset], &len);
-        offset += len;
-        read_hdr_sz += len;
-
-        if (stype <= 9) {
-          cell->payload.cols_type.push_back(static_cast<sqlite_type>(stype));
-        } else if (stype >= 12) {
-          cell->payload.cols_type.push_back(stype % 2 == 0 ? ST_BLOB : ST_TEXT);
-        } else {
-          log("Invalid sqlite type (stype=%d) on page#%u cell#%u\n",
-              stype, pg_id, i);
-          return false;
-        }
-
-        cell->payload.cols_len.push_back(stype2len(stype));
-      }
-
-      // Read column bodies
-      for (vector<Pgsz>::iterator it = cell->payload.cols_len.begin();
-           it != cell->payload.cols_len.end();
-           ++it)
-      {
-        cell->payload.cols_offset.push_back(offset - cell_offset);
-        offset += *it;
-      }
-
-      overflown_payload_sz = cell->payload_sz - (offset - payload_start_offset);
-
-      fprintf(stderr, "payload_start_offset = %u\n", payload_start_offset);
-      fprintf(stderr, "offset = %u\n", offset);
-      fprintf(stderr, "payload_sz = %llu\n", cell->payload_sz);
-      fprintf(stderr, "overflown_payload_sz = %u\n", overflown_payload_sz);
-    }
-
+    cell->payload.digest_data();
     return true;
   }
+
+  /*
+  ** Read i-th cell in this page.
+  ** If the cell has overflow page, then cell->payload.data has whole
+  ** copied data from pages.
+  **
+  ** @param i  Specifies i-th cell in the page (0-origin).
+  **
+  ** @return false on error
+  */
+  public:
+  bool get_ith_cell(Pgsz i,
+                    /*out*/
+                    TableLeafPageCell *cell,
+                    u8 *buf_overflown_payload) const
+  {
+    // Asserted get_ith_cell(Pgsz i, TableLeafPageCell *cell) is called first
+    assert(buf_overflown_payload);
+    assert(cell->overflow_pgno != 0);
+    assert(cell->payload_sz_in_origpg > 0);
+    assert(cell->payload_sz_in_origpg < cell->payload_sz);
+
+    // Copy payload from this page and overflow pages
+    Pgsz offset = 0;
+    memcpy(&buf_overflown_payload[offset], cell->payload.data, cell->payload_sz_in_origpg);
+    offset += cell->payload_sz_in_origpg;
+    Pgsz usable_sz = db_header->get_pg_sz() - db_header->get_reserved_space();
+    Pgsz payload_sz_rem = cell->payload_sz - cell->payload_sz_in_origpg;
+
+    for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
+      Page ovpg(f_db, db_header, overflow_pgno);
+      assert(ovpg.read());
+      overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
+      Pgsz payload_sz_inpg = min<Pgsz>(usable_sz - sizeof(Pgno), payload_sz_rem);
+      payload_sz_rem -= payload_sz_inpg;
+      memcpy(&buf_overflown_payload[offset],
+             &ovpg.pg_data[sizeof(Pgno)],
+             payload_sz_inpg);
+      offset += payload_sz_inpg;
+    }
+    assert(payload_sz_rem == 0);
+
+    cell->payload.data = buf_overflown_payload;
+    cell->payload.digest_data();
+    return true;
+  }
+
 
   /*
   ** @param i  Specifies i-th cell in the page (0-origin).

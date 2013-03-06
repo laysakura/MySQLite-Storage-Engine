@@ -182,19 +182,49 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
     ASSERT_FALSE(tbl_leaf_page.get_ith_cell(0, &cell));
     ASSERT_EQ(cell.rowid, 1u);
     ASSERT_NE(cell.overflow_pgno, 0u);
-    ASSERT_GT(cell.payload_sz_in_origpg, 0);
+    ASSERT_GT(cell.payload_sz_in_origpg, 0u);
     ASSERT_LT(cell.payload_sz_in_origpg, cell.payload_sz);
 
-    if (cell.overflow_pgno != 0) {
-      vector<u8> payload_data(cell.payload_sz);
-      ASSERT_TRUE(tbl_leaf_page.get_ith_cell(0, &cell, &payload_data));
-    }
-
+    u8 *payload_data = new u8[cell.payload_sz];
+    ASSERT_TRUE(tbl_leaf_page.get_ith_cell(0, &cell, payload_data));
     ASSERT_EQ(cell.payload.cols_type[0], ST_TEXT);
     string data((char *)&cell.payload.data[cell.payload.cols_offset[0]],
                 cell.payload.cols_len[0]);
     string answer(1000, 'a');
     ASSERT_STREQ(data.c_str(), answer.c_str());
+    delete payload_data;
+  }
+
+  fclose(f_db);
+}
+TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
+{
+  FILE *f_db = open_sqlite_db("t/db/TableLeafPage-overflowpage10000.sqlite");
+  ASSERT_TRUE(f_db);
+
+  DbHeader db_header(f_db);
+  ASSERT_TRUE(db_header.read());
+
+  TableLeafPage tbl_leaf_page(f_db, &db_header, 2);
+  ASSERT_TRUE(tbl_leaf_page.read());
+
+  {
+    TableLeafPageCell cell;
+
+    ASSERT_FALSE(tbl_leaf_page.get_ith_cell(0, &cell));
+    ASSERT_EQ(cell.rowid, 1u);
+    ASSERT_NE(cell.overflow_pgno, 0u);
+    ASSERT_GT(cell.payload_sz_in_origpg, 0u);
+    ASSERT_LT(cell.payload_sz_in_origpg, cell.payload_sz);
+
+    u8 *payload_data = new u8[cell.payload_sz];
+    ASSERT_TRUE(tbl_leaf_page.get_ith_cell(0, &cell, payload_data));
+    ASSERT_EQ(cell.payload.cols_type[0], ST_TEXT);
+    string data((char *)&cell.payload.data[cell.payload.cols_offset[0]],
+                cell.payload.cols_len[0]);
+    string answer(10000, 'a');
+    ASSERT_STREQ(data.c_str(), answer.c_str());
+    delete payload_data;
   }
 
   fclose(f_db);
