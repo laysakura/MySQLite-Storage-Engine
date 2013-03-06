@@ -179,9 +179,16 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
   {
     TableLeafPageCell cell;
 
-    ASSERT_TRUE(tbl_leaf_page.get_ith_cell(0, &cell));
+    ASSERT_FALSE(tbl_leaf_page.get_ith_cell(0, &cell));
     ASSERT_EQ(cell.rowid, 1u);
     ASSERT_NE(cell.overflow_pgno, 0u);
+    ASSERT_GT(cell.payload_sz_in_origpg, 0);
+    ASSERT_LT(cell.payload_sz_in_origpg, cell.payload_sz);
+
+    if (cell.overflow_pgno != 0) {
+      vector<u8> payload_data(cell.payload_sz);
+      ASSERT_TRUE(tbl_leaf_page.get_ith_cell(0, &cell, &payload_data));
+    }
 
     ASSERT_EQ(cell.payload.cols_type[0], ST_TEXT);
     string data((char *)&cell.payload.data[cell.payload.cols_offset[0]],

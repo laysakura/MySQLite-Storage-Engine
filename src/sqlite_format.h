@@ -32,6 +32,9 @@
 #define DBHDR_PGSZ_OFFSET 16
 #define DBHDR_PGSZ_LEN 2
 
+#define DBHDR_RESERVEDSPACE_OFFSET 20
+#define DBHDR_RESERVEDSPACE_LEN 1
+
 #define BTREEHDR_SZ_LEAF 8
 #define BTREEHDR_SZ_INTERIOR 12
 
@@ -214,6 +217,11 @@ private:
   public:
   Pgsz get_pg_sz() const {
     return u8s_to_val<Pgsz>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
+  }
+
+  public:
+  Pgsz get_reserved_space() const {
+    return u8s_to_val<Pgsz>(&hdr_data[DBHDR_RESERVEDSPACE_OFFSET], DBHDR_RESERVEDSPACE_LEN);
   }
 
   // Prohibit default constructor
@@ -500,17 +508,36 @@ class TableLeafPage : public BtreePage {
     cell->rowid = get_rowid(offset, &len);
     offset += len;
 
-    Pgsz overflown_payload_sz = 0;
+    // Overflow page treatment
+    // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
+    Pgsz payload_sz_inpg;
+    Pgsz usable_sz = db_header.get_pg_sz() - db_header.get_reserved_space();
+    Pgsz max_local = usable_sz - 35;
+    if (cell->payload_sz <= max_local) {
+      // no overflow page
+      payload_sz_inpg = cell->payload_sz;
+      cell->overflow_pgno = 0;
+    } else {
+      // overflow page exists
+      Pgsz min_local = (usable_sz - 12) * 32/255 - 23;
+      Pgsz local_sz = min_local + (cell->payload_sz - min_local) % (usable_sz - 4);
+      cell->payload_sz_in_origpg = local_sz > max_local ? min_local : local_sz;
+
+      cell->overflow_pgno = u8s_to_val<Pgno>(pg_data[offset + cell->payload_sz_in_origpg],
+                                             BTREECELL_OVERFLOWPGNO_LEN);
+      return false;  // caller should call 
+    }
+
     { // Read payload
       // @see
       // Extracting SQLite records - Figure 4. SQLite record format
       Pgsz payload_start_offset = offset;
-      Pgsz hdr_sz = varint2u64(&pg_data[offset], &len);
+      Pgsz hdr_sz = varint2u64(&cell->payload.data[offset], &len);
       offset += len;
 
       // Read column headers
       for (u64 read_hdr_sz = len; read_hdr_sz < hdr_sz; ) {
-        Pgsz stype = varint2u64(&pg_data[offset], &len);
+        Pgsz stype = varint2u64(&cell->payload.data[offset], &len);
         offset += len;
         read_hdr_sz += len;
 
@@ -542,14 +569,6 @@ class TableLeafPage : public BtreePage {
       fprintf(stderr, "offset = %u\n", offset);
       fprintf(stderr, "payload_sz = %llu\n", cell->payload_sz);
       fprintf(stderr, "overflown_payload_sz = %u\n", overflown_payload_sz);
-    }
-
-    cell->overflow_pgno = overflown_payload_sz == 0 ?
-      0 : u8s_to_val<Pgno>(&pg_data[offset], BTREECELL_OVERFLOWPGNO_LEN);
-
-    if (cell->overflow_pgno == 0) {
-      // no overflow page
-      cell->payload.data = &pg_data[cell_offset];
     }
 
     return true;
