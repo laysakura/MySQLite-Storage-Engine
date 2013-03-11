@@ -181,7 +181,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
 
     ASSERT_FALSE(tbl_leaf_page.get_ith_cell(0, &cell));
     ASSERT_EQ(cell.rowid, 1u);
-    ASSERT_NE(cell.overflow_pgno, 0u);
+    ASSERT_NE(cell.overflow_pgno, 0u);  // This suggests there are overflow pages
     ASSERT_GT(cell.payload_sz_in_origpg, 0u);
     ASSERT_LT(cell.payload_sz_in_origpg, cell.payload_sz);
 
@@ -239,23 +239,20 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage)
 
   TableBtree tbl_btree(f_db);
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 1, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 1u);
-    ASSERT_EQ(ith_cell_in_pg, 0);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 1, 1, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 1u);
+    ASSERT_EQ(cell_pos.cpa_idx, 0);
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 2, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 1u);
-    ASSERT_EQ(ith_cell_in_pg, 1);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 1, 2, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 1u);
+    ASSERT_EQ(cell_pos.cpa_idx, 1);
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_FALSE(tbl_btree.get_cell_by_key(f_db, 1, 3, &rec_pgno, &ith_cell_in_pg));
+    CellPos cell_pos;
+    ASSERT_FALSE(tbl_btree.get_cellpos_by_key(f_db, 1, 3, &cell_pos));
   }
 
   fclose(f_db);
@@ -267,23 +264,20 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage_fragmented)
 
   TableBtree tbl_btree(f_db);
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 1, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 1u);
-    ASSERT_EQ(ith_cell_in_pg, 0);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 1, 1, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 1u);
+    ASSERT_EQ(cell_pos.cpa_idx, 0);
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_FALSE(tbl_btree.get_cell_by_key(f_db, 1, 2, &rec_pgno, &ith_cell_in_pg));
+    CellPos cell_pos;
+    ASSERT_FALSE(tbl_btree.get_cellpos_by_key(f_db, 1, 2, &cell_pos));
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 1, 3, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 1u);
-    ASSERT_EQ(ith_cell_in_pg, 1);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 1, 3, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 1u);
+    ASSERT_EQ(cell_pos.cpa_idx, 1);
   }
 
   fclose(f_db);
@@ -295,45 +289,83 @@ TEST(TableBtree, get_record_by_key_10000rec_4tab_4096psize)
 
   TableBtree tbl_btree(f_db);
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 1, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 6u);
-    ASSERT_EQ(ith_cell_in_pg, 0);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 2, 1, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 6u);
+    ASSERT_EQ(cell_pos.cpa_idx, 0);
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 200, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 6u);
-    ASSERT_EQ(ith_cell_in_pg, 199);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 2, 200, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 6u);
+    ASSERT_EQ(cell_pos.cpa_idx, 199);
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 421, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 6u);
-    ASSERT_EQ(ith_cell_in_pg, 420);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 2, 421, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 6u);
+    ASSERT_EQ(cell_pos.cpa_idx, 420);
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 422, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 7u);
-    ASSERT_EQ(ith_cell_in_pg, 0);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 2, 422, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 7u);
+    ASSERT_EQ(cell_pos.cpa_idx, 0);
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_TRUE(tbl_btree.get_cell_by_key(f_db, 2, 2500, &rec_pgno, &ith_cell_in_pg));
-    ASSERT_EQ(rec_pgno, 30u);
-    ASSERT_EQ(ith_cell_in_pg, 38);
+    CellPos cell_pos;
+    ASSERT_TRUE(tbl_btree.get_cellpos_by_key(f_db, 2, 2500, &cell_pos));
+    ASSERT_EQ(cell_pos.pgno, 30u);
+    ASSERT_EQ(cell_pos.cpa_idx, 38);
   }
   {
-    Pgno rec_pgno;
-    Pgsz ith_cell_in_pg;
-    ASSERT_FALSE(tbl_btree.get_cell_by_key(f_db, 2, 2501, &rec_pgno, &ith_cell_in_pg));
+    CellPos cell_pos;
+    ASSERT_FALSE(tbl_btree.get_cellpos_by_key(f_db, 2, 2501, &cell_pos));
   }
+
+  fclose(f_db);
+}
+TEST(TableBtree, FindTableRootPage)
+{
+  string finding_tbl_name("Beer");
+  Pgno finding_tbl_rootpg = 0;
+
+  FILE *f_db = open_sqlite_db("t/db/FindTableRootPage.sqlite");
+  ASSERT_TRUE(f_db);
+
+  DbHeader db_header(f_db);
+  ASSERT_TRUE(db_header.read());
+
+  TableBtree tbl_btree(f_db);
+
+  // こういう探索関数を書こうねっていう提案
+
+  CellPos cellpos(1);  // cursor to sqlite_master
+  while (!cellpos.cursor_end) {
+    ASSERT_TRUE(tbl_btree.get_cellpos_fullscan(f_db, &cellpos));
+
+    TableLeafPage tbl_leaf_page(f_db, &db_header, cellpos.visit_path.back().pgno);
+    ASSERT_TRUE(tbl_leaf_page.read());  // TODO: cache
+
+    TableLeafPageCell cell;
+    if (!tbl_leaf_page.get_ith_cell(cellpos.cpa_idx, &cell) &&
+        cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
+      u8 *payload_data = new u8[cell.payload_sz];
+      assert(tbl_leaf_page.get_ith_cell(cellpos.cpa_idx, &cell, payload_data));
+    }
+
+    ASSERT_EQ(cell.payload.cols_type[SQLITE_MASTER_COLNO_NAME], ST_TEXT);
+    string tbl_name((char *)&cell.payload.data[cell.payload.cols_offset[SQLITE_MASTER_COLNO_NAME]],
+                    cell.payload.cols_len[SQLITE_MASTER_COLNO_NAME]);  //これもシンタックスシュガーが欲しい
+    if (tbl_name == finding_tbl_name) {
+      ちゃんとBeerがとれてこのpathに入ってるのに・・・って感じ
+      finding_tbl_rootpg =
+        u8s_to_val<Pgno>(&cell.payload.data[cell.payload.cols_offset[SQLITE_MASTER_COLNO_ROOTPAGE]],
+                         sizeof(Pgno));
+      break;
+    }
+  }
+  ASSERT_EQ(finding_tbl_rootpg, 4u);
 
   fclose(f_db);
 }
