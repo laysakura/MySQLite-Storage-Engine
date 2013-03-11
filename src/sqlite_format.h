@@ -97,6 +97,37 @@ typedef enum sqlite_type {
   ST_TEXT,   /* >= 13, odd  */
 } sqlite_type;
 
+struct BtreePathNode {
+  Pgno pgno;
+  Pgno sib_idx;  // 0-origin
+
+  public:
+  BtreePathNode(Pgno pgno, Pgno sib_idx) : pgno(pgno), sib_idx(sib_idx) {}
+};
+
+struct CellPos {
+  Pgsz pgno;  // TODO: obsolete!! remove later
+
+  vector<BtreePathNode> visit_path;  // Save the history of traversal.
+               // Example:
+               //
+               // 0-+-0
+               //   |
+               //   +-1-+-0
+               //   |   |
+               //   +-2 +-1
+  Pgsz cpa_idx;
+  bool cursor_end;  // flag to indicate end of traversing
+
+  public:
+  CellPos(Pgno root_pgno)
+    : visit_path(1, BtreePathNode(root_pgno, 0)), cpa_idx(-1), cursor_end(false)
+  {}
+
+  public:  // TODO: private
+  CellPos() {}
+};
+
 
 static inline bool has_sqlite3_signature(FILE * const f)
 {
@@ -127,7 +158,7 @@ static inline Pgsz stype2len(Pgsz stype) {
 
 
 /*
-** pathをopenし，もし存在すればそれがSQLite DBとしてvalidなものかをチェックする
+** Open the path and if file exists in the path then check the validity as a SQLite DB.
 **
 ** @return
 ** NULL: Error. `message' is set.
@@ -238,7 +269,7 @@ protected:
 public:
   u8 *pg_data;
   const DbHeader * const db_header;
-  Pgno pg_id;
+  Pgno pgno;
 
   /*
   ** @note
@@ -248,8 +279,8 @@ public:
   public:
   Page(FILE * const f_db,
        const DbHeader * const db_header,
-       Pgno pg_id)
-    : f_db(f_db), db_header(db_header), pg_id(pg_id)
+       Pgno pgno)
+    : f_db(f_db), db_header(db_header), pgno(pgno)
   {
     assert(f_db);
     assert(db_header);
@@ -264,7 +295,7 @@ public:
   bool read() const {
     assert(db_header);
     Pgsz pg_sz = db_header->get_pg_sz();
-    return mysqlite_fread(pg_data, pg_sz * (pg_id - 1), pg_sz, f_db);
+    return mysqlite_fread(pg_data, pg_sz * (pgno - 1), pg_sz, f_db);
   }
 
   // Prohibit default constructor
@@ -279,8 +310,8 @@ class BtreePage : public Page {
   public:
   BtreePage(FILE * const f_db,
             const DbHeader * const db_header,
-            Pgno pg_id)
-    : Page(f_db, db_header, pg_id)
+            Pgno pgno)
+    : Page(f_db, db_header, pgno)
   {}
 
   // Btree header info
@@ -288,7 +319,7 @@ class BtreePage : public Page {
   public:
   btree_page_type get_btree_type() const {
     return (btree_page_type)pg_data[
-      pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_BTREETYPE_OFFSET :
+      pgno == 1 ? DB_HEADER_SZ + BTREEHDR_BTREETYPE_OFFSET :
                    BTREEHDR_BTREETYPE_OFFSET
     ];
   }
@@ -297,7 +328,7 @@ class BtreePage : public Page {
   Pgsz get_freeblock_offset() const {
     return u8s_to_val<Pgsz>(
       &pg_data[
-        pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_FREEBLOCKOFST_OFFSET :
+        pgno == 1 ? DB_HEADER_SZ + BTREEHDR_FREEBLOCKOFST_OFFSET :
                      BTREEHDR_FREEBLOCKOFST_OFFSET
       ],
       BTREEHDR_FREEBLOCKOFST_LEN);
@@ -307,7 +338,7 @@ class BtreePage : public Page {
   Pgsz get_n_cell() const {
     return u8s_to_val<Pgsz>(
       &pg_data[
-        pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_NCELL_OFFSET :
+        pgno == 1 ? DB_HEADER_SZ + BTREEHDR_NCELL_OFFSET :
                      BTREEHDR_NCELL_OFFSET
       ],
       BTREEHDR_NCELL_LEN);
@@ -317,7 +348,7 @@ class BtreePage : public Page {
   Pgsz get_cell_content_area_offset() const {
     return u8s_to_val<Pgsz>(
       &pg_data[
-        pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_CELLCONTENTAREAOFST_OFFSET :
+        pgno == 1 ? DB_HEADER_SZ + BTREEHDR_CELLCONTENTAREAOFST_OFFSET :
                      BTREEHDR_CELLCONTENTAREAOFST_OFFSET
       ],
       BTREEHDR_CELLCONTENTAREAOFST_LEN);
@@ -326,7 +357,7 @@ class BtreePage : public Page {
   protected:
   u8 get_n_fragmentation() const {
     return pg_data[
-      pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_NFRAGMENTATION_OFFSET :
+      pgno == 1 ? DB_HEADER_SZ + BTREEHDR_NFRAGMENTATION_OFFSET :
                    BTREEHDR_NFRAGMENTATION_OFFSET
     ];
   }
@@ -337,7 +368,7 @@ class BtreePage : public Page {
            get_btree_type() == TABLE_INTERIOR);
     return u8s_to_val<Pgno>(
       &pg_data[
-        pg_id == 1 ? DB_HEADER_SZ + BTREEHDR_RIGHTMOSTPG_OFFSET :
+        pgno == 1 ? DB_HEADER_SZ + BTREEHDR_RIGHTMOSTPG_OFFSET :
                      BTREEHDR_RIGHTMOSTPG_OFFSET
       ],
       BTREEHDR_RIGHTMOSTPG_LEN);
@@ -376,6 +407,11 @@ class BtreePage : public Page {
 
   // Cell info
 
+  public:
+  bool has_ith_cell(Pgsz i) const {
+    return get_ith_cell_offset(i) != 0;
+  }
+
   /*
   ** @param i  0-origin index.
   **
@@ -389,7 +425,7 @@ class BtreePage : public Page {
     btree_page_type type = get_btree_type();
     Pgsz cpa_start = (type == INDEX_LEAF || type == TABLE_LEAF) ?
       BTREEHDR_SZ_LEAF : BTREEHDR_SZ_INTERIOR;
-    if (pg_id == 1) cpa_start += DB_HEADER_SZ;
+    if (pgno == 1) cpa_start += DB_HEADER_SZ;
     return u8s_to_val<Pgsz>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
   }
 
@@ -491,14 +527,17 @@ struct TableLeafPageCell {
   u64 rowid;
   Payload payload;
   u32 overflow_pgno;  // First overflow page num. 0 when cell has no overflow page.
+
+  public:
+  inline bool has_overflow_pg() const { return overflow_pgno != 0; }
 };
 
 class TableLeafPage : public BtreePage {
   public:
   TableLeafPage(FILE * const f_db,
                 const DbHeader * const db_header,
-                Pgno pg_id)
-   : BtreePage(f_db, db_header, pg_id)
+                Pgno pgno)
+   : BtreePage(f_db, db_header, pgno)
   {}
 
   /*
@@ -627,8 +666,8 @@ class TableInteriorPage : public BtreePage {
   public:
   TableInteriorPage(FILE * const f_db,
                     const DbHeader * const db_header,
-                    Pgno pg_id)
-   : BtreePage(f_db, db_header, pg_id)
+                    Pgno pgno)
+   : BtreePage(f_db, db_header, pgno)
   {}
 
   public:
@@ -642,6 +681,46 @@ class TableInteriorPage : public BtreePage {
     offset += sizeof(Pgno);
 
     cell->rowid = get_rowid(offset, &len);
+  }
+
+  /*
+  ** 'this' page is not included in 'path'
+  */
+  public:
+  bool get_path_to_leftmost_leaf(/* out */ vector<BtreePathNode> *path) {
+    BtreePage *cur_page = this;
+    while (cur_page->get_btree_type() == TABLE_INTERIOR) {
+      // find leftmost child
+      TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(cur_page);
+      int n_cell = cur_interior_page->get_n_cell();
+      Pgno leftmost_child_pgno;
+      if (n_cell > 0) {
+        struct TableInteriorPageCell cell;
+        cur_interior_page->get_ith_cell(0, &cell);
+        leftmost_child_pgno = cell.left_child_pgno;
+      } else {
+        leftmost_child_pgno = cur_interior_page->get_rightmost_pg();
+      }
+
+      // jump to leftmost child
+      if (path->size() > 0) {
+        // 'this' should not be deleted
+        delete cur_page;
+      }
+      cur_page = new BtreePage(f_db, db_header, leftmost_child_pgno);
+      if (!cur_page->read()) goto read_err;  // TODO: Cache
+
+      // add to path
+      ;
+      path->push_back(BtreePathNode(cur_page->pgno, 0));
+    }
+    assert(cur_page->get_btree_type() == TABLE_LEAF);
+    return true;
+
+  read_err:
+    log("Failed to read DB file");
+    delete cur_page;
+    return false;
   }
 };
 
@@ -670,13 +749,105 @@ private:
   TableBtree();
 
   /*
+  ** Retrieve a cell in order recursively
+  **
+  ** @param cellpos->pgno  First page to visit in this call
+  ** @param cellpos->visit_path  It suggests next page to visit
+  ** @param cellpos->cpa_idx  It suggests which cell to be retrieved.
+  **   If the index exceeds num of cells in pgno, jump to next page.
+  ** @param cellpos->cursor_end  true means end of traversal
+  ** @param at_leaf  true means pgno is table leaf page
+  */
+  private:
+  bool get_cellpos_fullscan_aux(FILE *f_db,
+                                /* inout */
+                                CellPos *cellpos)
+  {
+    assert(!cellpos->cursor_end);
+
+    BtreePage *cur_page = new BtreePage(f_db, &db_header,
+                                        cellpos->visit_path.back().pgno);
+    assert(cur_page->read());  // TODO: Cache
+
+    btree_page_type btree_type = cur_page->get_btree_type();
+    assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
+
+    // If at interior node, then to leftmost leaf
+    if (btree_type == TABLE_INTERIOR) {
+      TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(cur_page);
+      vector<BtreePathNode> path;
+      assert(cur_interior_page->get_path_to_leftmost_leaf(&path));
+      cellpos->visit_path.insert(
+        cellpos->visit_path.end(),
+        path.begin(), path.end()
+      );
+
+      delete cur_page;
+      cur_page = new BtreePage(f_db, &db_header,
+                               cellpos->visit_path.back().pgno);
+    }
+    assert(cur_page->get_btree_type() == TABLE_LEAF);
+
+    // get a cell
+    bool has_cell = cur_page->has_ith_cell(++cellpos->cpa_idx);
+    if (has_cell) {
+      // cur_page has cell to point at
+      return true;
+    }
+    else if (!has_cell && cellpos->visit_path.size() == 1) {
+      // leaf == root. And no more cell
+      cellpos->cursor_end = true;
+      return true;
+    }
+    else if (!has_cell && cellpos->visit_path.size() > 1) {
+      // Jump to parent who has more children
+      while (cellpos->visit_path.size() > 1) {
+        BtreePathNode child_node = cellpos->visit_path.back();
+        cellpos->visit_path.pop_back();
+        BtreePathNode parent_node = cellpos->visit_path.back();
+
+        TableInteriorPage cur_interior_page(f_db, &db_header, parent_node.pgno);
+        if (cur_interior_page.has_ith_cell(child_node.sib_idx + 1)) {
+          // parent has next child
+          break;
+        }
+      }
+      // go to leftmost leaf
+      TableInteriorPage *cur_interior_page = new TableInteriorPage(f_db, &db_header,
+                                                                   cellpos->visit_path.back().pgno);
+      vector<BtreePathNode> path;
+      assert(cur_interior_page->get_path_to_leftmost_leaf(&path));
+      delete cur_interior_page;
+
+      cellpos->visit_path.insert(
+        cellpos->visit_path.end(),
+        path.begin(), path.end()
+      );
+
+      return get_cellpos_fullscan_aux(f_db, cellpos);
+    }
+    else assert(0);
+  }
+
+  /*
+  ** Retrieve a cell in order recursively
+  */
+  public:
+  bool get_cellpos_fullscan(FILE *f_db,
+                            /* inout */
+                            CellPos *cellpos)
+  {
+    return get_cellpos_fullscan_aux(f_db, cellpos);
+  }
+
+  /*
   ** Find a record from key recursively
   */
   private:
-  bool get_cell_by_key_aux(FILE *f_db,
-                           Pgno pgno, u64 key,
-                           /* out */
-                           Pgno *rec_pgno, Pgsz *ith_cell_in_pg)
+  bool get_cellpos_by_key_aux(FILE *f_db,
+                              Pgno pgno, u64 key,
+                              /* out */
+                              CellPos *cellpos)
   {
     BtreePage *cur_page = new BtreePage(f_db, &db_header, pgno);
     if (!cur_page->read()) {  // TODO: Cache
@@ -697,8 +868,8 @@ private:
 
         if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
           // found a cell to return.
-          *rec_pgno = pgno;
-          *ith_cell_in_pg = i;
+          cellpos->pgno = pgno;
+          cellpos->cpa_idx = i;
           delete cur_page;
           return true;
         }
@@ -717,24 +888,24 @@ private:
         if (prev_rowid < key && key <= cell.rowid) {
           // found next page to traverse
           delete cur_page;
-          return get_cell_by_key_aux(f_db, cell.left_child_pgno, key,
-                                     rec_pgno, ith_cell_in_pg);
+          return get_cellpos_by_key_aux(f_db, cell.left_child_pgno, key,
+                                        cellpos);
         }
       }
       // cell corresponding the key is in the rightmost child page
       delete cur_page;
-      return get_cell_by_key_aux(f_db,
-                                 cur_interior_page->get_rightmost_pg(), key,
-                                 rec_pgno, ith_cell_in_pg);
+      return get_cellpos_by_key_aux(f_db,
+                                    cur_interior_page->get_rightmost_pg(), key,
+                                    cellpos);
     }
     else return false;  // Asserted not to come here
   }
   public:
-  bool get_cell_by_key(FILE *f_db, Pgno root_pgno, u64 key,
-                       /* out */
-                       Pgno *rec_pgno, Pgsz *ith_cell_in_pg) {
-    return get_cell_by_key_aux(f_db, root_pgno, key,
-                               rec_pgno, ith_cell_in_pg);
+  bool get_cellpos_by_key(FILE *f_db, Pgno root_pgno, u64 key,
+                          /* out */
+                          CellPos *cellpos) {
+    return get_cellpos_by_key_aux(f_db, root_pgno, key,
+                                  cellpos);
   }
 };
 
