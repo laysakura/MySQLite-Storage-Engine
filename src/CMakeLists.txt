@@ -1,6 +1,9 @@
+cmake_minimum_required(VERSION 2.8)
+
 PROJECT(mysqlite_utest)
 
-OPTION(GTEST_SRC "Path to Google Test" )
+OPTION(GTEST_SRC "Path to Google Test")
+message(${GTEST_SRC})
 IF(NOT GTEST_SRC)
   MESSAGE(FATAL_ERROR "Needs -DGTEST_SRC=/path/to/gtest/")
 ENDIF()
