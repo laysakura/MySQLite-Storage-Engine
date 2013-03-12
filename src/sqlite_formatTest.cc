@@ -358,10 +358,9 @@ TEST(TableBtree, FindTableRootPage)
     string tbl_name((char *)&cell.payload.data[cell.payload.cols_offset[SQLITE_MASTER_COLNO_NAME]],
                     cell.payload.cols_len[SQLITE_MASTER_COLNO_NAME]);  //これもシンタックスシュガーが欲しい
     if (tbl_name == finding_tbl_name) {
-      ちゃんとBeerがとれてこのpathに入ってるのに・・・って感じ
       finding_tbl_rootpg =
         u8s_to_val<Pgno>(&cell.payload.data[cell.payload.cols_offset[SQLITE_MASTER_COLNO_ROOTPAGE]],
-                         sizeof(Pgno));
+                         cell.payload.cols_len[SQLITE_MASTER_COLNO_ROOTPAGE]);
       break;
     }
   }

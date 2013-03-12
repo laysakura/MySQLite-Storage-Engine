@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 2.8)
+
 PROJECT(mysqlite_utest)
 
 OPTION(GTEST_SRC "Path to Google Test" )
