@@ -1,0 +1,10 @@
+* TODOs
+** Features to add
+   - Support index scan. See http://dev.mysql.com/doc/internals/en/support-for-indexing.html
+   - Page cache?
+
+** Fix
+   - More sophisticated API
+
+** TODOs from sources
+   #+setupfile: TODO-from-src.org
