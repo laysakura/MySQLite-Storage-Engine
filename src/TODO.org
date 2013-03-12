@@ -35,3 +35,4 @@
 - /home/nakatani/git/mysqlite-storage-engine/t/02-auto-create-table.t:51:    local $TODO = 'Reading table interior page and overflow page is not supported yet';
 - /home/nakatani/git/mysqlite-storage-engine/t/02-auto-create-table.t:59:TODO: {
 - /home/nakatani/git/mysqlite-storage-engine/t/02-auto-create-table.t:60:    local $TODO = 'BUG: mysql_real_connect hard coding';
+
