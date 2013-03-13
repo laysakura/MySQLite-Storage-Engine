@@ -1,7 +1,11 @@
 * Features to add
   - Support index scan. See http://dev.mysql.com/doc/internals/en/support-for-indexing.html
   - INTEGER PRIMARY KEY support. See http://www.sqlite.org/lang_createtable.html#rowid
-  - Page cache?
+  - Page cache, and cache for other data
+  - Database locks (closely related to page cache)
+    - shared lock, reserved lock, pending lock, and exclusive lock. See "The Definitive Guide to SQLite - Database Locks" and notebook
+  - Table lock for maintaining cursor. See The Definitive Guide to SQLite - Table Locks"
+  - *Shared page cache* with all connections. Single mysqld process treats all connections, so it can defeat original SQLite with many connections.
 
 * Fix
   - More sophisticated API
