@@ -118,7 +118,7 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
 
   {
     for (u64 row = 0; row < 2; ++row) {
-      TableLeafPageCell cell;
+      RecordCell cell;
 
       ASSERT_TRUE(tbl_leaf_page.get_ith_cell(row, &cell));
       ASSERT_EQ(cell.rowid, row + 1);
@@ -160,7 +160,7 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 
   {
     for (u64 row = 0; row < 2; ++row) {
-      TableLeafPageCell cell;
+      RecordCell cell;
 
       ASSERT_TRUE(tbl_leaf_page.get_ith_cell(row, &cell));
       ASSERT_EQ(cell.rowid, row + 1);
@@ -191,7 +191,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
 
   {
-    TableLeafPageCell cell;
+    RecordCell cell;
 
     ASSERT_FALSE(tbl_leaf_page.get_ith_cell(0, &cell));
     ASSERT_EQ(cell.rowid, 1u);
@@ -225,7 +225,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
 
   {
-    TableLeafPageCell cell;
+    RecordCell cell;
 
     ASSERT_FALSE(tbl_leaf_page.get_ith_cell(0, &cell));
     ASSERT_EQ(cell.rowid, 1u);
@@ -371,7 +371,7 @@ TEST(TableBtree, FindTableRootPage)
     TableLeafPage tbl_leaf_page(f_db, &db_header, cellpos.visit_path.back().pgno);
     ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());  // TODO: cache
 
-    TableLeafPageCell cell;
+    RecordCell cell;
     if (!tbl_leaf_page.get_ith_cell(cellpos.cpa_idx, &cell) &&
         cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
       u8 *payload_data = new u8[cell.payload_sz];

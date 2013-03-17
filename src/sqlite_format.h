@@ -542,7 +542,7 @@ public:
 
 };
 
-struct TableLeafPageCell {
+struct RecordCell {
   u64 payload_sz;
   u64 payload_sz_in_origpg;
   u64 rowid;
@@ -573,7 +573,7 @@ class TableLeafPage : public BtreePage {
   public:
   bool get_ith_cell(Pgsz i,
                     /*out*/
-                    TableLeafPageCell *cell) const
+                    RecordCell *cell) const
   {
     u8 len;
     Pgsz cell_offset, offset;
@@ -604,7 +604,7 @@ class TableLeafPage : public BtreePage {
       cell->overflow_pgno = u8s_to_val<Pgno>(&pg_data[offset + cell->payload_sz_in_origpg],
                                              BTREECELL_OVERFLOWPGNO_LEN);
       return false;  // caller should call
-                     // get_ith_cell(Pgsz i, TableLeafPageCell *cell,
+                     // get_ith_cell(Pgsz i, RecordCell *cell,
                      //              vector<u8> *buf_overflown_payload)
                      // later.
     }
@@ -626,10 +626,10 @@ class TableLeafPage : public BtreePage {
   public:
   bool get_ith_cell(Pgsz i,
                     /*out*/
-                    TableLeafPageCell *cell,
+                    RecordCell *cell,
                     u8 *buf_overflown_payload) const
   {
-    // Asserted get_ith_cell(Pgsz i, TableLeafPageCell *cell) is called first
+    // Asserted get_ith_cell(Pgsz i, RecordCell *cell) is called first
     assert(buf_overflown_payload);
     assert(cell->overflow_pgno != 0);
     assert(cell->payload_sz_in_origpg > 0);

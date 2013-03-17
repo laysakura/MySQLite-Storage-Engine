@@ -86,7 +86,7 @@ int RowCursor::get_int(int colno) const
   TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
   assert(MYSQLITE_OK == tbl_leaf_page.read());
 
-  TableLeafPageCell cell;
+  RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
@@ -108,7 +108,7 @@ const char *RowCursor::get_text(int colno) const
   TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
   assert(MYSQLITE_OK == tbl_leaf_page.read());
 
-  TableLeafPageCell cell;
+  RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
