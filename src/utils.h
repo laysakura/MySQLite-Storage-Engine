@@ -20,25 +20,17 @@
 
 using namespace std;
 #include <vector>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-
-/*
-** Types
-*/
-typedef signed char        s8;
-typedef unsigned char      u8;
-typedef signed short       s16;
-typedef unsigned short     u16;
-typedef signed int         s32;
-typedef unsigned int       u32;
-typedef signed long long   s64;
-typedef unsigned long long u64;
+#include "mysqlite_types.h"
 
 
 /*
 ** Logger
 */
-#define log(fmt, ...)                                                   \
+#define log_msg(fmt, ...)                                                   \
   do {                                                                  \
     time_t _t = time(NULL);                                             \
     tm _tm;                                                             \
@@ -48,6 +40,30 @@ typedef unsigned long long u64;
             _tm.tm_year % 100, _tm.tm_mon + 1, _tm.tm_mday,             \
             _tm.tm_hour, _tm.tm_min, _tm.tm_sec,                        \
             __LINE__, ## __VA_ARGS__);                                  \
+  } while (0)
+
+#define case_log_errstat(errstat, msg)   \
+  case errstat:                          \
+    log_msg(msg);                        \
+    break;                               \
+
+#define log_errstat(errstat)                                            \
+  do {                                                                  \
+    switch (errstat) {                                                  \
+    case MYSQLITE_OK:                                                   \
+      break;                                                            \
+                                                                         \
+    /* Messages */                                                       \
+    case_log_errstat(MYSQLITE_CORRUPT_DB, "Database is corrupt\n");      \
+    case_log_errstat(MYSQLITE_PERMISSION_DENIED, "Permission denied\n"); \
+    case_log_errstat(MYSQLITE_NO_SUCH_TABLE, "No such table\n");         \
+    case_log_errstat(MYSQLITE_IO_ERR, "File IO error\n");                \
+    case_log_errstat(MYSQLITE_DB_FILE_NOT_FOUND, "DB file is not found\n"); \
+                                                                        \
+    default:                                                            \
+      log_msg("!!! errstat=%d has no corresponding message !!!\n", errstat); \
+      abort();                                                          \
+    }                                                                   \
   } while (0)
 
 
@@ -113,21 +129,21 @@ T u8s_to_val(const u8 * const p_sequence, u8 len_sequence) {
 }
 
 
-static inline bool mysqlite_fread(void *ptr, long offset, size_t nbyte, FILE * const f) {
+static inline errstat mysqlite_fread(void *ptr, long offset, size_t nbyte, FILE * const f) {
   long prev_offset = ftell(f);
   if (fseek(f, offset, SEEK_SET) == -1) {
     perror("fseek() failed\n");
-    return false;
+    return MYSQLITE_IO_ERR;
   }
   if (nbyte != fread(ptr, 1, nbyte, f)) {
     perror("fread() fails\n");
-    return false;
+    return MYSQLITE_IO_ERR;
   }
   if (fseek(f, prev_offset, SEEK_SET) == -1) {
     perror("fseek() failed\n");
-    return false;
+    return MYSQLITE_IO_ERR;
   }
-  return true;
+  return MYSQLITE_OK;
 }
 
 

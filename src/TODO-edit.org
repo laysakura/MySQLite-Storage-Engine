@@ -6,6 +6,11 @@
     - shared lock, reserved lock, pending lock, and exclusive lock. See "The Definitive Guide to SQLite - Database Locks" and notebook
   - Table lock for maintaining cursor. See The Definitive Guide to SQLite - Table Locks"
   - *Shared page cache* with all connections. Single mysqld process treats all connections, so it can defeat original SQLite with many connections.
+  - More sophisticated memory allocation. See http://www.sqlite.org/malloc.html
+  - Do not use bool as a return value. Rather use enum to show what kind of error happens.
+  - Support all result value types. See http://www.sqlite.org/c3ref/column_blob.html
 
 * Fix
   - More sophisticated API
+  - Log errors in APIs
+  - Reconsider when to read DB header. Everytime? Idiot.
