@@ -18,6 +18,13 @@
 #define _SQLITE_FORMAT_H_
 
 
+#include <string.h>
+#include <assert.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "mysqlite_types.h"
 #include "utils.h"
 
 
@@ -58,6 +65,8 @@
 #define BTREECELL_OVERFLOWPGNO_LEN 4
 
 #define CPA_ELEM_LEN 2
+
+#define SQLITE_MASTER_ROOTPGNO 1
 
 #define SQLITE_MASTER_COLNO_TYPE     0
 #define SQLITE_MASTER_COLNO_NAME     1
@@ -132,7 +141,7 @@ struct CellPos {
 static inline bool has_sqlite3_signature(FILE * const f)
 {
   char s[SQLITE3_SIGNATURE_SZ];
-  if (!mysqlite_fread(s, 0, SQLITE3_SIGNATURE_SZ, f)) return false;
+  if (MYSQLITE_OK != mysqlite_fread(s, 0, SQLITE3_SIGNATURE_SZ, f)) return false;
   return strcmp(s, SQLITE3_SIGNATURE) == 0;
 }
 
@@ -163,51 +172,60 @@ static inline Pgsz stype2len(Pgsz stype) {
 ** @return
 ** NULL: Error. `message' is set.
 */
-static inline FILE *open_sqlite_db(const char * const path,
-                                   /* out */
-                                   bool * const is_existing_db,
-                                   char * const message)
+static inline FILE *_open_sqlite_db(const char * const path,
+                                    /* out */
+                                    bool * const is_existing_db,
+                                    char * const message,
+                                    errstat * const res)
 {
+  FILE *f;
   struct stat st;
   if (stat(path, &st) == 0) {
     *is_existing_db = true;
-    FILE *f = fopen(path, "r");
+    f = fopen(path, "r");
     if (!f) {
       sprintf(message, "Permission denied: Cannot open %s in read mode.", path);
+      *res = MYSQLITE_PERMISSION_DENIED;
       return NULL;
     }
     if (!has_sqlite3_signature(f)) {
       sprintf(message, "Format error: %s does not seem SQLite3 database.", path);
+      *res = MYSQLITE_CORRUPT_DB;
       return NULL;
     }
-    return f;
   } else {
     *is_existing_db = false;
-    FILE *f = fopen(path, "w+");
+    f = fopen(path, "w+");
     if (!f) {
       sprintf(message, "Permission denied: Cannot create %s.", path);
+      *res = MYSQLITE_PERMISSION_DENIED;
       return NULL;
     }
-    return f;
   }
+  *res = MYSQLITE_OK;
+  return f;
 }
-static inline FILE *open_sqlite_db(const char * const path,
-                                   /* out */
-                                   bool * const is_existing_db)
+static inline FILE *_open_sqlite_db(const char * const path,
+                                    /* out */
+                                    bool * const is_existing_db,
+                                    errstat * const res)
 {
   char msg[1024];
-  FILE *f_ret = open_sqlite_db(path, is_existing_db, msg);
-  if (!f_ret) log("%s", msg);
+  FILE *f_ret = _open_sqlite_db(path, is_existing_db, msg, res);
+  if (!f_ret) log_msg("%s", msg);
   return f_ret;
 }
-static inline FILE *open_sqlite_db(const char * const existing_path)
+static inline FILE *open_sqlite_db(const char * const existing_path,
+                                   /* out */
+                                   errstat * const res)
 {
   bool is_existing_db;
-  FILE *f_ret = open_sqlite_db(existing_path, &is_existing_db);
+  FILE *f_ret = _open_sqlite_db(existing_path, &is_existing_db, res);
   if (!f_ret) return NULL;
 
   if (!is_existing_db) {
     if (0 != fclose(f_ret)) perror("fclose() failed\n");
+    *res = MYSQLITE_DB_FILE_NOT_FOUND;
     return NULL;
   }
 
@@ -241,7 +259,7 @@ private:
   }
 
   public:
-  bool read() const {
+  errstat read() const {
     return mysqlite_fread(hdr_data, 0, DB_HEADER_SZ, f_db);
   }
 
@@ -292,7 +310,7 @@ public:
   }
 
   public:
-  bool read() const {
+  errstat read() const {
     assert(db_header);
     Pgsz pg_sz = db_header->get_pg_sz();
     return mysqlite_fread(pg_data, pg_sz * (pgno - 1), pg_sz, f_db);
@@ -453,8 +471,11 @@ class BtreePage : public Page {
 
   // Page management
   public:
-  bool read() const {
-    return Page::read() && is_valid_hdr();
+  errstat read() const {
+    errstat res = Page::read();
+    if (res != MYSQLITE_OK) return res;
+    if (!is_valid_hdr()) return MYSQLITE_CORRUPT_DB;
+    return MYSQLITE_OK;
   }
 
 };
@@ -502,7 +523,7 @@ public:
       } else if (stype >= 12) {
         cols_type.push_back(stype % 2 == 0 ? ST_BLOB : ST_TEXT);
       } else {
-        log("Invalid sqlite type (stype=%d)\n", stype);
+        log_msg("Invalid sqlite type (stype=%d)\n", stype);
         return false;
       }
       cols_len.push_back(stype2len(stype));
@@ -593,6 +614,7 @@ class TableLeafPage : public BtreePage {
   }
 
   /*
+  ** This function is called only if overflow pages exist.
   ** Read i-th cell in this page.
   ** If the cell has overflow page, then cell->payload.data has whole
   ** copied data from pages.
@@ -718,7 +740,7 @@ class TableInteriorPage : public BtreePage {
     return true;
 
   read_err:
-    log("Failed to read DB file");
+    log_msg("Failed to read DB file");
     delete cur_page;
     return false;
   }
@@ -851,7 +873,7 @@ private:
   {
     BtreePage *cur_page = new BtreePage(f_db, &db_header, pgno);
     if (!cur_page->read()) {  // TODO: Cache
-      log("Failed to read DB file");
+      log_msg("Failed to read DB file");
       delete cur_page;
       return false;
     }
