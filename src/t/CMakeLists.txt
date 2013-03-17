@@ -11,8 +11,7 @@ set(GTEST_LDADD ${GTEST_SRC}/src/gtest_main.o ${GTEST_SRC}/src/gtest-all.o -lpth
 
 
 ## define test executables here
-# set(mysqlite_utest_targets utils sqlite_format mysqlite_api)
-set(mysqlite_utest_targets mysqlite_api)
+set(mysqlite_utest_targets utils sqlite_format mysqlite_api)
 
 foreach(target ${mysqlite_utest_targets})
   if(EXISTS ../${target}.cc)

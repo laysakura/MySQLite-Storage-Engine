@@ -644,7 +644,7 @@ class TableLeafPage : public BtreePage {
 
     for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
       Page ovpg(f_db, db_header, overflow_pgno);
-      assert(ovpg.read());
+      assert(MYSQLITE_OK == ovpg.read());
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
       Pgsz payload_sz_inpg = min<Pgsz>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
@@ -730,7 +730,7 @@ class TableInteriorPage : public BtreePage {
         delete cur_page;
       }
       cur_page = new BtreePage(f_db, db_header, leftmost_child_pgno);
-      if (!cur_page->read()) goto read_err;  // TODO: Cache
+      if (MYSQLITE_OK != cur_page->read()) goto read_err;  // TODO: Cache
 
       // add to path
       ;
@@ -761,7 +761,7 @@ private:
   TableBtree(FILE *f_db)
     : cur_page(NULL), cur_cell(0), f_db(f_db), db_header(f_db)
   {
-    assert(db_header.read());
+    assert(MYSQLITE_OK == db_header.read());
   }
   public:
   ~TableBtree()
@@ -789,7 +789,7 @@ private:
 
     BtreePage *cur_page = new BtreePage(f_db, &db_header,
                                         cellpos->visit_path.back().pgno);
-    assert(cur_page->read());  // TODO: Cache
+    assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
 
     btree_page_type btree_type = cur_page->get_btree_type();
     assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
@@ -872,7 +872,7 @@ private:
                               CellPos *cellpos)
   {
     BtreePage *cur_page = new BtreePage(f_db, &db_header, pgno);
-    if (!cur_page->read()) {  // TODO: Cache
+    if (MYSQLITE_OK != cur_page->read()) {  // TODO: Cache
       log_msg("Failed to read DB file");
       delete cur_page;
       return false;
@@ -920,7 +920,7 @@ private:
                                     cur_interior_page->get_rightmost_pg(), key,
                                     cellpos);
     }
-    else return false;  // Asserted not to come here
+    else abort();  // Asserted not to come here
   }
   public:
   bool get_cellpos_by_key(FILE *f_db, Pgno root_pgno, u64 key,

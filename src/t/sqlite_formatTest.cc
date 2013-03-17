@@ -23,28 +23,32 @@ public:
 
 TEST(BtreePage, BtreePageValidityCheck_success)
 {
-  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TBtreePage btree_page(f_db, &db_header, 2);
-  ASSERT_TRUE(btree_page.read());
+  ASSERT_EQ(MYSQLITE_OK, btree_page.read());
   ASSERT_TRUE(btree_page.is_valid_hdr());
 
   fclose(f_db);
 }
 TEST(BtreePage, BtreePageValidityCheck_page1)
 {
-  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TBtreePage btree_page(f_db, &db_header, 1);
-  ASSERT_TRUE(btree_page.read());
+  ASSERT_EQ(MYSQLITE_OK, btree_page.read());
   ASSERT_TRUE(btree_page.is_valid_hdr());
 
   fclose(f_db);
@@ -52,14 +56,16 @@ TEST(BtreePage, BtreePageValidityCheck_page1)
 
 TEST(BtreePage, get_ith_cell_offset_EmptyTable)
 {
-  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TBtreePage btree_page(f_db, &db_header, 2);
-  ASSERT_TRUE(btree_page.read());
+  ASSERT_EQ(MYSQLITE_OK, btree_page.read());
 
   ASSERT_EQ(0, btree_page.get_ith_cell_offset(0));
 
@@ -67,14 +73,16 @@ TEST(BtreePage, get_ith_cell_offset_EmptyTable)
 }
 TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 {
-  FILE *f_db = open_sqlite_db("db/BtreePage-2cells-table.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/BtreePage-2cells-table.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TBtreePage btree_page(f_db, &db_header, 2);
-  ASSERT_TRUE(btree_page.read());
+  ASSERT_EQ(MYSQLITE_OK, btree_page.read());
 
   {
     ASSERT_GT(btree_page.get_ith_cell_offset(0), 0);
@@ -97,14 +105,16 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 */
 TEST(TableLeafPage, get_ith_cell_2CellsTable)
 {
-  FILE *f_db = open_sqlite_db("db/TableLeafPage-int.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/TableLeafPage-int.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TableLeafPage tbl_leaf_page(f_db, &db_header, 2);
-  ASSERT_TRUE(tbl_leaf_page.read());
+  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
 
   {
     for (u64 row = 0; row < 2; ++row) {
@@ -137,14 +147,16 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
 }
 TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 {
-  FILE *f_db = open_sqlite_db("db/TableLeafPage-2tables.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/TableLeafPage-2tables.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TableLeafPage tbl_leaf_page(f_db, &db_header, 1); // sqlite_master
-  ASSERT_TRUE(tbl_leaf_page.read());
+  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
 
   {
     for (u64 row = 0; row < 2; ++row) {
@@ -167,14 +179,16 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 }
 TEST(TableLeafPage, get_ith_cell_OverflowPage)
 {
-  FILE *f_db = open_sqlite_db("db/TableLeafPage-overflowpage.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/TableLeafPage-overflowpage.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TableLeafPage tbl_leaf_page(f_db, &db_header, 2);
-  ASSERT_TRUE(tbl_leaf_page.read());
+  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
 
   {
     TableLeafPageCell cell;
@@ -199,14 +213,16 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
 }
 TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
 {
-  FILE *f_db = open_sqlite_db("db/TableLeafPage-overflowpage10000.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/TableLeafPage-overflowpage10000.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TableLeafPage tbl_leaf_page(f_db, &db_header, 2);
-  ASSERT_TRUE(tbl_leaf_page.read());
+  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
 
   {
     TableLeafPageCell cell;
@@ -234,8 +250,10 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
 // TableBtree
 TEST(TableBtree, get_record_by_key_NoInteriorPage)
 {
-  FILE *f_db = open_sqlite_db("db/TableBtree-NoInteriorPage.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/TableBtree-NoInteriorPage.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   TableBtree tbl_btree(f_db);
   {
@@ -259,8 +277,10 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage)
 }
 TEST(TableBtree, get_record_by_key_NoInteriorPage_fragmented)
 {
-  FILE *f_db = open_sqlite_db("db/TableBtree-NoInteriorPage-fragmented.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/TableBtree-NoInteriorPage-fragmented.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   TableBtree tbl_btree(f_db);
   {
@@ -284,8 +304,10 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage_fragmented)
 }
 TEST(TableBtree, get_record_by_key_10000rec_4tab_4096psize)
 {
-  FILE *f_db = open_sqlite_db("db/TableBtree-10000rec-4tab-4096psize.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/TableBtree-10000rec-4tab-4096psize.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   TableBtree tbl_btree(f_db);
   {
@@ -330,11 +352,13 @@ TEST(TableBtree, FindTableRootPage)
   string finding_tbl_name("Beer");
   Pgno finding_tbl_rootpg = 0;
 
-  FILE *f_db = open_sqlite_db("db/FindTableRootPage.sqlite");
+  errstat res;
+  FILE *f_db = open_sqlite_db("db/FindTableRootPage.sqlite", &res);
   ASSERT_TRUE(f_db);
+  ASSERT_EQ(res, MYSQLITE_OK);
 
   DbHeader db_header(f_db);
-  ASSERT_TRUE(db_header.read());
+  ASSERT_EQ(MYSQLITE_OK, db_header.read());
 
   TableBtree tbl_btree(f_db);
 
@@ -345,7 +369,7 @@ TEST(TableBtree, FindTableRootPage)
     ASSERT_TRUE(tbl_btree.get_cellpos_fullscan(f_db, &cellpos));
 
     TableLeafPage tbl_leaf_page(f_db, &db_header, cellpos.visit_path.back().pgno);
-    ASSERT_TRUE(tbl_leaf_page.read());  // TODO: cache
+    ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());  // TODO: cache
 
     TableLeafPageCell cell;
     if (!tbl_leaf_page.get_ith_cell(cellpos.cpa_idx, &cell) &&
