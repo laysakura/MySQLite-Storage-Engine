@@ -15,8 +15,8 @@ set(GTEST_LDADD ${GTEST_SRC}/src/gtest_main.o ${GTEST_SRC}/src/gtest-all.o -lpth
 set(mysqlite_utest_targets mysqlite_api)
 
 foreach(target ${mysqlite_utest_targets})
-  if(EXISTS ${target}.cc)
-    set(utest_src ${target}Test.cc ${target}.cc)
+  if(EXISTS ../${target}.cc)
+    set(utest_src ${target}Test.cc ../${target}.cc)
   else()
     set(utest_src ${target}Test.cc)
   endif()

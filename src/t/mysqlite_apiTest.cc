@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "mysqlite_api.h"
+#include "../mysqlite_api.h"
 
 
 TEST(TypicalUsage, SmallData)
@@ -8,7 +8,7 @@ TEST(TypicalUsage, SmallData)
   using namespace mysqlite;
 
   Connection conn;
-  errstat res = conn.open("t/db/BeerDB-small.sqlite");
+  errstat res = conn.open("db/BeerDB-small.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   RowCursor *rows = conn.table_fullscan("Beer");

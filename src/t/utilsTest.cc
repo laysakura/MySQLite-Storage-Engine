@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "utils.h"
+#include "../utils.h"
 
 TEST(varint2u64, 1seq)
 {

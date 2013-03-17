@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "sqlite_format.h"
+#include "../sqlite_format.h"
 
 
 /*
@@ -23,7 +23,7 @@ public:
 
 TEST(BtreePage, BtreePageValidityCheck_success)
 {
-  FILE *f_db = open_sqlite_db("t/db/BtreePage-empty-table.sqlite");
+  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
@@ -37,7 +37,7 @@ TEST(BtreePage, BtreePageValidityCheck_success)
 }
 TEST(BtreePage, BtreePageValidityCheck_page1)
 {
-  FILE *f_db = open_sqlite_db("t/db/BtreePage-empty-table.sqlite");
+  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
@@ -52,7 +52,7 @@ TEST(BtreePage, BtreePageValidityCheck_page1)
 
 TEST(BtreePage, get_ith_cell_offset_EmptyTable)
 {
-  FILE *f_db = open_sqlite_db("t/db/BtreePage-empty-table.sqlite");
+  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
@@ -67,7 +67,7 @@ TEST(BtreePage, get_ith_cell_offset_EmptyTable)
 }
 TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 {
-  FILE *f_db = open_sqlite_db("t/db/BtreePage-2cells-table.sqlite");
+  FILE *f_db = open_sqlite_db("db/BtreePage-2cells-table.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
@@ -97,7 +97,7 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 */
 TEST(TableLeafPage, get_ith_cell_2CellsTable)
 {
-  FILE *f_db = open_sqlite_db("t/db/TableLeafPage-int.sqlite");
+  FILE *f_db = open_sqlite_db("db/TableLeafPage-int.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
@@ -137,7 +137,7 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
 }
 TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 {
-  FILE *f_db = open_sqlite_db("t/db/TableLeafPage-2tables.sqlite");
+  FILE *f_db = open_sqlite_db("db/TableLeafPage-2tables.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
@@ -167,7 +167,7 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 }
 TEST(TableLeafPage, get_ith_cell_OverflowPage)
 {
-  FILE *f_db = open_sqlite_db("t/db/TableLeafPage-overflowpage.sqlite");
+  FILE *f_db = open_sqlite_db("db/TableLeafPage-overflowpage.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
@@ -199,7 +199,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
 }
 TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
 {
-  FILE *f_db = open_sqlite_db("t/db/TableLeafPage-overflowpage10000.sqlite");
+  FILE *f_db = open_sqlite_db("db/TableLeafPage-overflowpage10000.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
@@ -234,7 +234,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
 // TableBtree
 TEST(TableBtree, get_record_by_key_NoInteriorPage)
 {
-  FILE *f_db = open_sqlite_db("t/db/TableBtree-NoInteriorPage.sqlite");
+  FILE *f_db = open_sqlite_db("db/TableBtree-NoInteriorPage.sqlite");
   ASSERT_TRUE(f_db);
 
   TableBtree tbl_btree(f_db);
@@ -259,7 +259,7 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage)
 }
 TEST(TableBtree, get_record_by_key_NoInteriorPage_fragmented)
 {
-  FILE *f_db = open_sqlite_db("t/db/TableBtree-NoInteriorPage-fragmented.sqlite");
+  FILE *f_db = open_sqlite_db("db/TableBtree-NoInteriorPage-fragmented.sqlite");
   ASSERT_TRUE(f_db);
 
   TableBtree tbl_btree(f_db);
@@ -284,7 +284,7 @@ TEST(TableBtree, get_record_by_key_NoInteriorPage_fragmented)
 }
 TEST(TableBtree, get_record_by_key_10000rec_4tab_4096psize)
 {
-  FILE *f_db = open_sqlite_db("t/db/TableBtree-10000rec-4tab-4096psize.sqlite");
+  FILE *f_db = open_sqlite_db("db/TableBtree-10000rec-4tab-4096psize.sqlite");
   ASSERT_TRUE(f_db);
 
   TableBtree tbl_btree(f_db);
@@ -330,7 +330,7 @@ TEST(TableBtree, FindTableRootPage)
   string finding_tbl_name("Beer");
   Pgno finding_tbl_rootpg = 0;
 
-  FILE *f_db = open_sqlite_db("t/db/FindTableRootPage.sqlite");
+  FILE *f_db = open_sqlite_db("db/FindTableRootPage.sqlite");
   ASSERT_TRUE(f_db);
 
   DbHeader db_header(f_db);
