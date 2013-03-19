@@ -15,6 +15,8 @@ TEST(TypicalUsage, SmallData)
   ASSERT_TRUE(rows);
 
   while (rows->next()) {
+    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+    ASSERT_EQ(rows->get_type(1), MYSQLITE_INTEGER);
     int price = rows->get_int(1);
     ASSERT_GE(price, 100);
     ASSERT_LE(price, 1500);

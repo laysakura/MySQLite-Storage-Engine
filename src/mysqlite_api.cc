@@ -73,6 +73,27 @@ RowCursor::RowCursor(FILE *f_db, Pgno root_pgno)
   assert(f_db);
 }
 
+mysqlite_type RowCursor::get_type(int colno) const
+{
+  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
+  // TODO: So redundunt....
+  // TODO: use cache for both record and page!!
+  DbHeader db_header(f_db);
+  assert(MYSQLITE_OK == db_header.read());
+
+  TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
+  assert(MYSQLITE_OK == tbl_leaf_page.read());
+
+  RecordCell cell;
+  if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
+      cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
+    u8 *payload_data = new u8[cell.payload_sz];
+    assert(tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data));
+  }
+
+  return sqlite_type_to_mysqlite_type(cell.payload.cols_type[colno]);
+}
+
 int RowCursor::get_int(int colno) const
 {
   // TODO: use cache for both record and page!!

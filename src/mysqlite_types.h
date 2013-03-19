@@ -3,7 +3,7 @@
 
 
 /*
-** Types
+  Basic utility types
 */
 typedef signed char        s8;
 typedef unsigned char      u8;
@@ -14,9 +14,21 @@ typedef unsigned int       u32;
 typedef signed long long   s64;
 typedef unsigned long long u64;
 
+/*
+  MySQLite API types.
+
+  @see http://www.sqlite.org/c3ref/c_blob.html
+*/
+typedef enum mysqlite_type {
+  MYSQLITE_INTEGER = 1,
+  MYSQLITE_FLOAT   = 2,
+  MYSQLITE_TEXT    = 3,
+  MYSQLITE_BLOB    = 4,
+  MYSQLITE_NULL    = 5,
+} mysqlite_type;
 
 /*
-** Error status.
+  Error status.
 */
 enum errstat {
   MYSQLITE_OK = 0,

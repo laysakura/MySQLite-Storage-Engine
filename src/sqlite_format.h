@@ -78,7 +78,7 @@
 
 
 /*
-** Types
+  SQLite internal types
 */
 typedef u32 Pgno;
 typedef u16 Pgsz;
@@ -105,6 +105,32 @@ typedef enum sqlite_type {
   ST_BLOB,   /* >= 12, even */
   ST_TEXT,   /* >= 13, odd  */
 } sqlite_type;
+
+static inline mysqlite_type sqlite_type_to_mysqlite_type(sqlite_type st)
+{
+  switch (st) {
+  case ST_NULL:
+    return MYSQLITE_NULL;
+  case ST_C0:
+  case ST_C1:
+  case ST_INT8:
+  case ST_INT16:
+  case ST_INT24:
+  case ST_INT32:
+    return MYSQLITE_INTEGER;
+  case ST_INT48:
+  case ST_INT64:
+    abort();  // TODO: support 64bit column int value.
+  case ST_FLOAT:
+    return MYSQLITE_FLOAT;
+  case ST_BLOB:
+    return MYSQLITE_BLOB;
+  case ST_TEXT:
+    return MYSQLITE_TEXT;
+  }
+  // Just for avoiding warning
+  return MYSQLITE_NULL;
+}
 
 struct BtreePathNode {
   Pgno pgno;

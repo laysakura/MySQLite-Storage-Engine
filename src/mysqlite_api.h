@@ -44,6 +44,8 @@ protected:
   ** Cell value getter.
   */
   public:
+  mysqlite_type get_type(int colno) const;
+  public:
   int get_int(int colno) const;
   public:
   const char *get_text(int colno) const;  // TODO: how to prevent memory leak? Self mem mngmt?

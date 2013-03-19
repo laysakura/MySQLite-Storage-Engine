@@ -17,6 +17,8 @@
   - Do not use bool as a return value. Rather use enum to show what kind of error happens.
   - Support all result value types. See http://www.sqlite.org/c3ref/column_blob.html
   - Maria DB?  Mr. H said that Maria DB and MySQL already have API difference storage engine implementor should be concious about.
+  - Get/Set DB name by using SQLite file name and current_thd->db.
+  - NULL column support (in find_current_row()).
 
 * Fix
   - Log errors in APIs

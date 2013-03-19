@@ -54,6 +54,8 @@ class Mysqlite_share : public Handler_share {
 public:
   mysql_mutex_t mutex;
   THR_LOCK lock;
+
+  Connection conn;   // TODO: Should a Connection be shared with all handlers??
   Mysqlite_share();
   ~Mysqlite_share()
   {
@@ -71,7 +73,7 @@ class ha_mysqlite: public handler
   Mysqlite_share *share;    ///< Shared lock info
   Mysqlite_share *get_share(); ///< Get the share
 
-  Rowid rowid;  // rowid currently reading
+  RowCursor *rows;  // rows currently fetching
 
 public:
   ha_mysqlite(handlerton *hton, TABLE_SHARE *table_arg);

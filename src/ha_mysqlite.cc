@@ -546,9 +546,14 @@ int ha_mysqlite::rnd_init(bool scan)
 {
   DBUG_ENTER("ha_mysqlite::rnd_init");
 
-  this->conn = new Connection();
-  assert(conn->open())
-  this->rows = 0;
+  // share->conn should be already opened by UDF sqlite_db().
+  if (!share->conn.is_opened()) {
+    log_msg("No SQLite DB file is opend.\n");
+    abort();    // TODO: More decent way to report SQLite db is not opened.
+  }
+
+  rows = share->conn.table_fullscan(table_share->table_name.str);
+  assert(rows);
 
   DBUG_RETURN(0);
 }
@@ -556,6 +561,10 @@ int ha_mysqlite::rnd_init(bool scan)
 int ha_mysqlite::rnd_end()
 {
   DBUG_ENTER("ha_mysqlite::rnd_end");
+
+  rows->close();
+  share->conn.close();
+
   DBUG_RETURN(0);
 }
 
@@ -581,9 +590,9 @@ int ha_mysqlite::rnd_next(uchar *buf)
   MYSQL_READ_ROW_START(table_share->db.str, table_share->table_name.str,
                        TRUE);
 
-  ++this->rowid;
+  ha_statistic_increment(&SSV::ha_read_rnd_next_count);
 
-  if ((rc = find_current_row(table_share->table_name.str, this->rowid, buf))) {
+  if ((rc = find_current_row(table_share->table_name.str, buf))) {
     /* nakatani: find_current_rowの中で実際のSQLite DBのパースを行い，
     ** nakatani: bufをMySQLのレコードフォーマットに合わせて埋めている．
     */
@@ -591,6 +600,8 @@ int ha_mysqlite::rnd_next(uchar *buf)
     ** rc!=0のときは，何かのエラーか，もうレコードを出しきった(HA_ERR_END_OF_FILE)時．
     */
     goto end;
+  } else {
+    stats.records++;
   }
 
 end:
@@ -599,12 +610,16 @@ end:
 }
 
 
-int ha_mysqlite::find_current_row(const string &table_name,
-                                  uchar *buf)
+int ha_mysqlite::find_current_row(uchar *buf)
 {
-  
+  if (!rows->next()) return HA_ERR_END_OF_FILE;
 
-  return HA_ERR_END_OF_FILE;
+  memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
+
+  // ここから行をとってbufにいれていく
+  for (Field **field=table->field ; *field ; field++) {
+
+  }
 }
 
 
