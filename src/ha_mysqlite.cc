@@ -613,6 +613,8 @@ int ha_mysqlite::index_last(uchar *buf)
 */
 int ha_mysqlite::rnd_init(bool scan)
 {
+  log_msg("rnd_init()\n");
+
   DBUG_ENTER("ha_mysqlite::rnd_init");
 
   // share->conn should be already opened by UDF sqlite_db().
@@ -680,7 +682,12 @@ end:
 
 int ha_mysqlite::find_current_row(uchar *buf)
 {
-  if (!rows->next()) return HA_ERR_END_OF_FILE;
+  if (!rows->next()) {
+    log_msg("find_current_row() shows HA_ERR_END_OF_FILE\n");
+    return HA_ERR_END_OF_FILE;
+  }
+
+  log_msg("find_current_row() is getting a record\n");
 
   memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
 
