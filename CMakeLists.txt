@@ -7,7 +7,7 @@ add_definitions("-DMYSQLITE_USING_CMAKE")
 
 add_definitions("-DMYSQL_DYNAMIC_PLUGIN")
 
-set(mysqlite_sources src/ha_mysqlite.cc src/udf_sqlite_db.cc)
+set(mysqlite_sources src/ha_mysqlite.cc src/udf_sqlite_db.cc src/mysqlite_api.cc)
 include_directories(${cmake_source_dir}/storage/mysqlite/src)
 mysql_add_plugin(mysqlite ${mysqlite_sources} STORAGE_ENGINE MODULE_ONLY MODULE_OUTPUT_NAME "libmysqlite_engine")
 

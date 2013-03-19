@@ -42,6 +42,7 @@
 
 #include <string>
 #include "sqlite_format.h"
+#include "mysqlite_api.h"
 
 using namespace std;
 
@@ -55,7 +56,11 @@ public:
   mysql_mutex_t mutex;
   THR_LOCK lock;
 
-  Connection conn;   // TODO: Should a Connection be shared with all handlers??
+  mysqlite::Connection conn;   // TODO: Should a Connection be shared with all handlers??
+  uint use_count;
+
+  static Mysqlite_share *get_share(); ///< Get the share
+
   Mysqlite_share();
   ~Mysqlite_share()
   {
@@ -71,9 +76,8 @@ class ha_mysqlite: public handler
 {
   THR_LOCK_DATA lock;      ///< MySQL lock
   Mysqlite_share *share;    ///< Shared lock info
-  Mysqlite_share *get_share(); ///< Get the share
 
-  RowCursor *rows;  // rows currently fetching
+  mysqlite::RowCursor *rows;  // rows currently fetching
 
 public:
   ha_mysqlite(handlerton *hton, TABLE_SHARE *table_arg);
@@ -272,9 +276,7 @@ public:
   THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to,
                              enum thr_lock_type lock_type);     ///< required
 
-  int find_current_row(const string &table_name,
-                       int rowid,
-                       /* out */
+  int find_current_row(/* out */
                        uchar *buf);
 };
 

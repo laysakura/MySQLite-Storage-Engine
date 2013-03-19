@@ -97,7 +97,11 @@
 #include "ha_mysqlite.h"
 #include "utils.h"
 #include "probes_mysql.h"
+#include "mysqlite_api.h"
 
+/* Stuff for shares */
+mysql_mutex_t mysqlite_mutex;
+static HASH mysqlite_open_tables;
 static handler *mysqlite_create_handler(handlerton *hton,
                                        TABLE_SHARE *table, 
                                        MEM_ROOT *mem_root);
@@ -162,24 +166,37 @@ static int mysqlite_init_func(void *p)
   they are needed to function.
 */
 
-Mysqlite_share *ha_mysqlite::get_share()
+Mysqlite_share *Mysqlite_share::get_share()
 {
-  Mysqlite_share *tmp_share;
+  Mysqlite_share *share;
 
-  DBUG_ENTER("ha_mysqlite::get_share()");
+  DBUG_ENTER("Mysqlite_share::get_share()");
 
-  lock_shared_ha_data();
-  if (!(tmp_share= static_cast<Mysqlite_share*>(get_ha_share_ptr())))
+  mysql_mutex_lock(&mysqlite_mutex);
+
+  /*
+    If share is not present in the hash, create a new share and
+    initialize its members.
+  */
+  if (!(share = (Mysqlite_share*)my_hash_search(&mysqlite_open_tables,
+                                                (const uchar *)"global key",
+                                                strlen("global key"))))  // TODO: Per table share
   {
-    tmp_share= new Mysqlite_share;
-    if (!tmp_share)
-      goto err;
+    share->use_count= 0;
 
-    set_ha_share_ptr(static_cast<Handler_share*>(tmp_share));
+    if (my_hash_insert(&mysqlite_open_tables, (uchar*) share))
+      goto error;
+    thr_lock_init(&share->lock);
+    /* mysql_mutex_init(csv_key_mutex_TINA_SHARE_mutex, */
+    /*                  &share->mutex, MY_MUTEX_INIT_FAST); */
   }
-err:
-  unlock_shared_ha_data();
-  DBUG_RETURN(tmp_share);
+
+  DBUG_RETURN(share);
+
+error:
+  mysql_mutex_unlock(&mysqlite_mutex);
+  my_free(share);
+  DBUG_RETURN(NULL);
 }
 
 
@@ -302,7 +319,7 @@ int ha_mysqlite::open(const char *name, int mode, uint test_if_locked)
 {
   DBUG_ENTER("ha_mysqlite::open");
 
-  if (!(share = get_share()))
+  if (!(share = Mysqlite_share::get_share()))
     DBUG_RETURN(HA_ERR_OUT_OF_MEM);
 
   thr_lock_data_init(&share->lock,&lock,NULL);
@@ -563,7 +580,6 @@ int ha_mysqlite::rnd_end()
   DBUG_ENTER("ha_mysqlite::rnd_end");
 
   rows->close();
-  share->conn.close();
 
   DBUG_RETURN(0);
 }
@@ -592,7 +608,7 @@ int ha_mysqlite::rnd_next(uchar *buf)
 
   ha_statistic_increment(&SSV::ha_read_rnd_next_count);
 
-  if ((rc = find_current_row(table_share->table_name.str, buf))) {
+  if ((rc = find_current_row(buf))) {
     /* nakatani: find_current_rowの中で実際のSQLite DBのパースを行い，
     ** nakatani: bufをMySQLのレコードフォーマットに合わせて埋めている．
     */
@@ -617,9 +633,15 @@ int ha_mysqlite::find_current_row(uchar *buf)
   memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
 
   // ここから行をとってbufにいれていく
+  int colno = 0;
   for (Field **field=table->field ; *field ; field++) {
-
+    if (MYSQLITE_INTEGER == rows->get_type(colno)) {
+      (*field)->store(rows->get_int(colno));
+    }
+    else abort();
   }
+
+  DBUG_RETURN(0);
 }
 
 
@@ -666,7 +688,7 @@ void ha_mysqlite::position(const uchar *record)
 */
 int ha_mysqlite::rnd_pos(uchar *buf, uchar *pos)
 {
-  log("enter rnd_pos\n");
+  log_msg("enter rnd_pos\n");
 
   int rc;
   DBUG_ENTER("ha_mysqlite::rnd_pos");

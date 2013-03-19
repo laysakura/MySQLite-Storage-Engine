@@ -7,6 +7,3 @@ sleep 5
 
 mysql -uroot mysql < support-files/uninstall.sql
 mysql -uroot mysql < support-files/install.sql
-
-echo "Current TODOs:"
-grep -rin 'TODO' src/* t/*.t

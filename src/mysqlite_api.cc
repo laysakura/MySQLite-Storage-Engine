@@ -22,6 +22,11 @@ errstat Connection::open(const char * const db_path)
   }
 }
 
+bool Connection::is_opened() const
+{
+  return f_db != NULL;
+}
+
 void Connection::close()
 {
   fclose(f_db);

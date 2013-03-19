@@ -92,6 +92,9 @@ class Connection {
 private:
   FILE *f_db;
 
+  public:
+  Connection() : f_db(NULL) {}
+
   /*
   ** Open a connection to a db
   **
@@ -100,6 +103,9 @@ private:
   */
   public:
   errstat open(const char * const db_path);
+
+  public:
+  bool is_opened() const;
 
   /*
   ** Close connection
