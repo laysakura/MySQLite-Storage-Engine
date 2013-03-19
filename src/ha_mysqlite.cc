@@ -545,7 +545,9 @@ int ha_mysqlite::rnd_init(bool scan)
 {
   DBUG_ENTER("ha_mysqlite::rnd_init");
 
-  this->rowid = 0;
+  this->conn = new Connection();
+  assert(conn->open())
+  this->rows = 0;
 
   DBUG_RETURN(0);
 }
@@ -597,8 +599,6 @@ end:
 
 
 int ha_mysqlite::find_current_row(const string &table_name,
-                                  int rowid,
-                                  /* out */
                                   uchar *buf)
 {
   

@@ -14,3 +14,5 @@
   - More sophisticated API
   - Log errors in APIs
   - Reconsider when to read DB header. Everytime? Idiot.
+  - Are connections from mysql (client) implemented as threads of mysqld?
+    See q4m source and learn how to manage connections.
