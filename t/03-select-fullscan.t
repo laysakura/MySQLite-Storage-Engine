@@ -45,3 +45,15 @@ is_deeply(
         ['Asahi'],
     ],
 );
+
+## UTF-8
+ok($dbh->do("drop table if exists japan"));
+ok($dbh->do("select sqlite_db('$testdir/db/03-simple-beer-jp.sqlite')"));
+is_deeply(
+    $dbh->selectall_arrayref("select * from japan"),
+    [
+        ['黒ラベル', 'サッポロ'],
+        ['一番絞り', 'キリン'],
+        ['スーパードライ', 'アサヒ'],
+    ],
+);

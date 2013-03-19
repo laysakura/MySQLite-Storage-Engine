@@ -697,7 +697,7 @@ int ha_mysqlite::find_current_row(uchar *buf)
       case MYSQLITE_TEXT:
         {
           const char *s = rows->get_text(colno);
-          (*field)->store(s, strlen(s), system_charset_info, CHECK_FIELD_WARN);
+          (*field)->store(s, strlen(s), my_charset_utf8_unicode_ci, CHECK_FIELD_WARN);
         }
         break;
       default:

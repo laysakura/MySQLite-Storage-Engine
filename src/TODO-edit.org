@@ -23,3 +23,5 @@
 * Fix
   - Log errors in APIs
   - Reconsider when to read DB header. Everytime? Idiot.
+  - MySQL does not support quoted ("", '') table name when CREATE TABLE, while SQLite does.
+    Understandable error message.
