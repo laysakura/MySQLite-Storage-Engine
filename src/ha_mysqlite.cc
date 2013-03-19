@@ -682,17 +682,15 @@ end:
 
 int ha_mysqlite::find_current_row(uchar *buf)
 {
-  if (!rows->next()) {
-    log_msg("find_current_row() shows HA_ERR_END_OF_FILE\n");
-    return HA_ERR_END_OF_FILE;
-  }
+  if (!rows->next()) return HA_ERR_END_OF_FILE;
 
-  log_msg("find_current_row() is getting a record\n");
+  /* Avoid asserts in ::store() for columns that are not going to be updated */
+  my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
 
   memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
 
   // ここから行をとってbufにいれていく
-  int colno = 0;
+  int colno = 1;  // TODO: colno はどっから情報を得る??
   for (Field **field=table->field ; *field ; field++) {
     if (MYSQLITE_INTEGER == rows->get_type(colno)) {
       (*field)->store(rows->get_int(colno));
@@ -700,7 +698,7 @@ int ha_mysqlite::find_current_row(uchar *buf)
     else abort();
   }
 
-  //DBUG_RETURN(0);
+  dbug_tmp_restore_column_map(table->write_set, org_bitmap);
   return 0;
 }
 

@@ -82,7 +82,7 @@ bool dup_table_schema()
 
     // Create tables
     for (vector<string>::iterator it = ddls.begin(); it != ddls.end(); ++it) {
-      if (mysql_query(conn, it->c_str())) {
+      if (mysql_query(conn, string(*it + " engine=mysqlite").c_str())) {
         log_msg("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
         goto err_ret;
       }
