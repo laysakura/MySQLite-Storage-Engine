@@ -157,7 +157,7 @@ static int mysqlite_init_func(void *p)
 /**
   @brief
   Example of simple lock controls. The "share" it creates is a
-  structure we will pass to each example handler. Do you have to have
+  structure we will pass to each mysqlite handler. Do you have to have
   one of these? Well, you have pieces that are used for locking, and
   they are needed to function.
 */
@@ -303,7 +303,8 @@ int ha_mysqlite::open(const char *name, int mode, uint test_if_locked)
   DBUG_ENTER("ha_mysqlite::open");
 
   if (!(share = get_share()))
-    DBUG_RETURN(1);
+    DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+
   thr_lock_data_init(&share->lock,&lock,NULL);
 
   DBUG_RETURN(0);

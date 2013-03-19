@@ -2,17 +2,22 @@
   - Support index scan. See http://dev.mysql.com/doc/internals/en/support-for-indexing.html
   - INTEGER PRIMARY KEY support. See http://www.sqlite.org/lang_createtable.html#rowid
   - Page cache, and cache for other data
-  - Database locks (closely related to page cache)
-    - shared lock, reserved lock, pending lock, and exclusive lock. See "The Definitive Guide to SQLite - Database Locks" and notebook
+  - Locks between mysql client (= mysqld threads).
+    ha_tina.cc seems to implement table lock.  But not sure whether it has reader/writer lock...
+    First, ignore any locks!!
+  - Locks between sqlite3 processes = Database locks (closely related to page cache).
+    - shared lock, reserved lock, pending lock, and exclusive lock.
+      See
+      - "The Definitive Guide to SQLite - Database Locks"
+      - http://www.sqlite.org/lockingv3.html
+      - notebook
   - Table lock for maintaining cursor. See The Definitive Guide to SQLite - Table Locks"
   - *Shared page cache* with all connections. Single mysqld process treats all connections, so it can defeat original SQLite with many connections.
   - More sophisticated memory allocation. See http://www.sqlite.org/malloc.html
   - Do not use bool as a return value. Rather use enum to show what kind of error happens.
   - Support all result value types. See http://www.sqlite.org/c3ref/column_blob.html
+  - Maria DB?  Mr. H said that Maria DB and MySQL already have API difference storage engine implementor should be concious about.
 
 * Fix
-  - More sophisticated API
   - Log errors in APIs
   - Reconsider when to read DB header. Everytime? Idiot.
-  - Are connections from mysql (client) implemented as threads of mysqld?
-    See q4m source and learn how to manage connections.
