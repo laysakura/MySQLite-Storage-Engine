@@ -5,7 +5,7 @@ use warnings;
 
 use DBI;
 
-use Test::More tests => 3;
+use Test::More tests => 5;
 
 use File::Basename;
 use Cwd 'realpath';
@@ -19,7 +19,7 @@ my $dbh = DBI->connect(
 
 
 ## Simple full scan
-ok($dbh->do("drop table if exists test02_table1_ddl_short_t1"));
+ok($dbh->do("drop table if exists japan"));
 ok($dbh->do("select sqlite_db('$testdir/db/03-simple-beer.sqlite')"));
 is_deeply(
     $dbh->selectall_arrayref("select * from japan"),
@@ -29,11 +29,19 @@ is_deeply(
         ['Super Dry', 'Asahi'],
     ],
 );
-SKIP: {
-    is_deeply(
-        $dbh->selectall_arrayref("select * from japan where maker = 'Kirin'"),
-        [
-            ['Ichiban Shibori', 'Kirin'],
-        ],
-    );
-}
+is_deeply(
+    $dbh->selectall_arrayref("select name from japan"),
+    [
+        ['Kuro-Label'],
+        ['Ichiban Shibori'],
+        ['Super Dry'],
+    ],
+);
+is_deeply(
+    $dbh->selectall_arrayref("select maker from japan"),
+    [
+        ['Sapporo'],
+        ['Kirin'],
+        ['Asahi'],
+    ],
+);
