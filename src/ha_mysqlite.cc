@@ -689,13 +689,23 @@ int ha_mysqlite::find_current_row(uchar *buf)
 
   memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
 
-  // ここから行をとってbufにいれていく
-  int colno = 1;  // TODO: colno はどっから情報を得る??
   for (Field **field=table->field ; *field ; field++) {
-    if (MYSQLITE_INTEGER == rows->get_type(colno)) {
-      (*field)->store(rows->get_int(colno));
+    int colno = (*field)->field_index;
+    if (bitmap_is_set(table->read_set, colno)) {
+      switch (rows->get_type(colno)) {
+      case MYSQLITE_INTEGER:
+        (*field)->store(rows->get_int(colno));
+        break;
+      case MYSQLITE_TEXT:
+        {
+          const char *s = rows->get_text(colno);
+          (*field)->store(s, strlen(s), system_charset_info, CHECK_FIELD_WARN);
+        }
+        break;
+      default:
+        abort();
+      }
     }
-    else abort();
   }
 
   dbug_tmp_restore_column_map(table->write_set, org_bitmap);
