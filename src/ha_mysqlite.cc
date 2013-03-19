@@ -613,8 +613,6 @@ int ha_mysqlite::index_last(uchar *buf)
 */
 int ha_mysqlite::rnd_init(bool scan)
 {
-  log_msg("rnd_init()\n");
-
   DBUG_ENTER("ha_mysqlite::rnd_init");
 
   // share->conn should be already opened by UDF sqlite_db().
