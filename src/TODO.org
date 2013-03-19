@@ -30,41 +30,42 @@
 
 * TODOs in source files
 ** .cc
-- /home/nakatani/git/mysqlite-storage-engine/src/ha_mysqlite.cc:552:    abort();    // TODO: More decent way to report SQLite db is not opened.
-- /home/nakatani/git/mysqlite-storage-engine/src/ha_mysqlite.cc:617:  memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
-- /home/nakatani/git/mysqlite-storage-engine/src/udf_sqlite_db.cc:87:  // TODO: BUG: Connection should not be newly created.
-- /home/nakatani/git/mysqlite-storage-engine/src/t/sqlite_formatTest.cc:372:    ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());  // TODO: cache
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:78:  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:79:  // TODO: So redundunt....
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:80:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:99:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:121:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:139:  // TODO: Cache... now memory leak
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:174:  assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:183:                                                strlen("global key"))))  // TODO: Per table share
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:569:    abort();    // TODO: More decent way to report SQLite db is not opened.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:633:  memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/udf_sqlite_db.cc:105:  // TODO: BUG: Connection should not be newly created.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/t/sqlite_formatTest.cc:372:    ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());  // TODO: cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:83:  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:84:  // TODO: So redundunt....
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:85:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:104:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:126:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:144:  // TODO: Cache... now memory leak
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:179:  assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
 
 ** .h
-- /home/nakatani/git/mysqlite-storage-engine/src/ha_mysqlite.h:58:  Connection conn;   // TODO: Should a Connection be shared with all handlers??
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:123:    abort();  // TODO: support 64bit column int value.
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:144:  Pgsz pgno;  // TODO: obsolete!! remove later
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:162:  public:  // TODO: private
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:431:    { // TODO: freeblock offset check
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:435:    { // TODO: num of cell check
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:439:    { // TODO: cell content area offset check
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:445:    { // TODO: num of fragmentation check
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:759:      if (MYSQLITE_OK != cur_page->read()) goto read_err;  // TODO: Cache
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:778:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:779:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:780:                            // TODO: should treated as cursor
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:781:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:818:    assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:901:    if (MYSQLITE_OK != cur_page->read()) {  // TODO: Cache
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:917:        if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.h:51:  const char *get_text(int colno) const;  // TODO: how to prevent memory leak? Self mem mngmt?
-- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.h:62:** TODO: Move this class to other file so that user cannot see it.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.h:59:  mysqlite::Connection conn;   // TODO: Should a Connection be shared with all handlers??
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:123:    abort();  // TODO: support 64bit column int value.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:144:  Pgsz pgno;  // TODO: obsolete!! remove later
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:162:  public:  // TODO: private
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:431:    { // TODO: freeblock offset check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:435:    { // TODO: num of cell check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:439:    { // TODO: cell content area offset check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:445:    { // TODO: num of fragmentation check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:759:      if (MYSQLITE_OK != cur_page->read()) goto read_err;  // TODO: Cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:778:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:779:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:780:                            // TODO: should treated as cursor
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:781:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:818:    assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:901:    if (MYSQLITE_OK != cur_page->read()) {  // TODO: Cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:917:        if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:51:  const char *get_text(int colno) const;  // TODO: how to prevent memory leak? Self mem mngmt?
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:62:** TODO: Move this class to other file so that user cannot see it.
 
 ** .t
-- /home/nakatani/git/mysqlite-storage-engine/t/02-auto-create-table.t:50:TODO: {
-- /home/nakatani/git/mysqlite-storage-engine/t/02-auto-create-table.t:51:    local $TODO = 'Reading table interior page and overflow page is not supported yet';
-- /home/nakatani/git/mysqlite-storage-engine/t/02-auto-create-table.t:59:TODO: {
-- /home/nakatani/git/mysqlite-storage-engine/t/02-auto-create-table.t:60:    local $TODO = 'BUG: mysql_real_connect hard coding';
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table.t:50:TODO: {
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table.t:51:    local $TODO = 'Reading table interior page and overflow page is not supported yet';
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table.t:59:TODO: {
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table.t:60:    local $TODO = 'BUG: mysql_real_connect hard coding';
 
