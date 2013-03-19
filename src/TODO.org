@@ -5,31 +5,53 @@
 * Features to add
   - Support index scan. See http://dev.mysql.com/doc/internals/en/support-for-indexing.html
   - INTEGER PRIMARY KEY support. See http://www.sqlite.org/lang_createtable.html#rowid
-  - Page cache?
+  - Page cache, and cache for other data
+  - Locks between mysql client (= mysqld threads).
+    ha_tina.cc seems to implement table lock.  But not sure whether it has reader/writer lock...
+    First, ignore any locks!!
+  - Locks between sqlite3 processes = Database locks (closely related to page cache).
+    - shared lock, reserved lock, pending lock, and exclusive lock.
+      See
+      - "The Definitive Guide to SQLite - Database Locks"
+      - http://www.sqlite.org/lockingv3.html
+      - notebook
+  - Table lock for maintaining cursor. See The Definitive Guide to SQLite - Table Locks"
+  - *Shared page cache* with all connections. Single mysqld process treats all connections, so it can defeat original SQLite with many connections.
+  - More sophisticated memory allocation. See http://www.sqlite.org/malloc.html
+  - Do not use bool as a return value. Rather use enum to show what kind of error happens.
+  - Support all result value types. See http://www.sqlite.org/c3ref/column_blob.html
+  - Maria DB?  Mr. H said that Maria DB and MySQL already have API difference storage engine implementor should be concious about.
 
 * Fix
-  - More sophisticated API
+  - Log errors in APIs
+  - Reconsider when to read DB header. Everytime? Idiot.
 
 * TODOs in source files
 ** .cc
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_formatTest.cc:348:    ASSERT_TRUE(tbl_leaf_page.read());  // TODO: cache
 - /home/nakatani/git/mysqlite-storage-engine/src/udf_sqlite_db.cc:87:  // TODO: BUG: Connection should not be newly created.
+- /home/nakatani/git/mysqlite-storage-engine/src/t/sqlite_formatTest.cc:372:    ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());  // TODO: cache
+- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:78:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:100:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:118:  // TODO: Cache... now memory leak
+- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.cc:153:  assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
 
 ** .h
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:109:  Pgsz pgno;  // TODO: obsolete!! remove later
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:127:  public:  // TODO: private
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:387:    { // TODO: freeblock offset check
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:391:    { // TODO: num of cell check
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:395:    { // TODO: cell content area offset check
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:401:    { // TODO: num of fragmentation check
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:711:      if (!cur_page->read()) goto read_err;  // TODO: Cache
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:730:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:731:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:732:                            // TODO: should treated as cursor
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:733:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:770:    assert(cur_page->read());  // TODO: Cache
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:853:    if (!cur_page->read()) {  // TODO: Cache
-- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:869:        if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:118:  Pgsz pgno;  // TODO: obsolete!! remove later
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:136:  public:  // TODO: private
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:405:    { // TODO: freeblock offset check
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:409:    { // TODO: num of cell check
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:413:    { // TODO: cell content area offset check
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:419:    { // TODO: num of fragmentation check
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:733:      if (MYSQLITE_OK != cur_page->read()) goto read_err;  // TODO: Cache
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:752:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:753:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:754:                            // TODO: should treated as cursor
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:755:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:792:    assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:875:    if (MYSQLITE_OK != cur_page->read()) {  // TODO: Cache
+- /home/nakatani/git/mysqlite-storage-engine/src/sqlite_format.h:891:        if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
+- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.h:49:  const char *get_text(int colno) const;  // TODO: how to prevent memory leak? Self mem mngmt?
+- /home/nakatani/git/mysqlite-storage-engine/src/mysqlite_api.h:60:** TODO: Move this class to other file so that user cannot see it.
 
 ** .t
 - /home/nakatani/git/mysqlite-storage-engine/t/02-auto-create-table.t:50:TODO: {
