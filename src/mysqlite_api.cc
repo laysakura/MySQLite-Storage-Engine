@@ -34,20 +34,25 @@ void Connection::close()
 
 RowCursor *Connection::table_fullscan(const char * const table)
 {
-  // Find root pgno of table from sqlite_master
   Pgno root_pgno = 0;
-  RowCursor *sqlite_master_rows = table_fullscan(SQLITE_MASTER_ROOTPGNO);
-  while (sqlite_master_rows->next()) {
-    const char *tbl_name =
-      sqlite_master_rows->get_text(SQLITE_MASTER_COLNO_TBL_NAME);
-    if (0 == strcmp(table, tbl_name)) {
-      root_pgno = sqlite_master_rows->get_int(SQLITE_MASTER_COLNO_ROOTPAGE);
-      break;
-    }
+  if (0 == strcmp("sqlite_master", table)) {
+    root_pgno = SQLITE_MASTER_ROOTPGNO;
   }
-  if (root_pgno == 0) {
-    log_errstat(MYSQLITE_NO_SUCH_TABLE);
-    return NULL;
+  else {
+    // Find root pgno of table from sqlite_master.
+    RowCursor *sqlite_master_rows = table_fullscan(SQLITE_MASTER_ROOTPGNO);
+    while (sqlite_master_rows->next()) {
+      const char *tbl_name =
+        sqlite_master_rows->get_text(SQLITE_MASTER_COLNO_TBL_NAME);
+      if (0 == strcmp(table, tbl_name)) {
+        root_pgno = sqlite_master_rows->get_int(SQLITE_MASTER_COLNO_ROOTPAGE);
+        break;
+      }
+    }
+    if (root_pgno == 0) {
+      log_errstat(MYSQLITE_NO_SUCH_TABLE);
+      return NULL;
+    }
   }
 
   return table_fullscan(root_pgno);

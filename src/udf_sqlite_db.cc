@@ -47,55 +47,10 @@ bool copy_sqlite_table_formats(/* out */
 
   rows->close();
   return true;
-
-
-  // DbHeader db_header(f_db);
-  // if (!db_header.read()) {
-  //   log_msg("Cannot read DB header\n");
-  //   return false;
-  // }
-
-  // TableLeafPage page1(f_db, &db_header, 1); // sqlite_master
-  // if (!page1.read()) {
-  //   log_msg("Cannot read page\n");
-  //   return false;
-  // }
-
-  // {
-  //   Pgsz n_cell = page1.get_n_cell();
-  //   for (u64 cell = 0; cell < n_cell; ++cell) {
-  //     u64 rowid;
-  //     Pgno overflow_pgno;
-  //     u64 overflown_payload_sz;
-  //     vector<Pgsz> cols_offset, cols_len;
-  //     vector<sqlite_type> cols_type;
-
-  //     page1.get_ith_cell_cols(
-  //       cell,
-  //       &rowid,
-  //       &overflow_pgno, &overflown_payload_sz,
-  //       cols_offset,
-  //       cols_len,
-  //       cols_type);
-
-  //     // Table name
-  //     assert(cols_type[SQLITE_MASTER_COLNO_SQL] == ST_TEXT);
-  //     table_names.push_back(
-  //       string((char *)&page1.pg_data[cols_offset[SQLITE_MASTER_COLNO_NAME]],
-  //              cols_len[SQLITE_MASTER_COLNO_NAME]));
-
-  //     // Table DDL
-  //     assert(cols_type[SQLITE_MASTER_COLNO_SQL] == ST_TEXT);
-  //     ddls.push_back(
-  //       string((char *)&page1.pg_data[cols_offset[SQLITE_MASTER_COLNO_SQL]],
-  //              cols_len[SQLITE_MASTER_COLNO_SQL]));
-  //   }
-  // }
-  // return true;
 }
 
 #include <mysql.h>
-bool dup_table_schema(FILE *f_db)
+bool dup_table_schema()
 {
   MYSQL *conn;
   if (!(conn = mysql_init(NULL))) {
@@ -173,10 +128,24 @@ my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
   initid->maybe_null = 1;
 
   char *path = args->args[0];
-  bool *is_existing_db = (bool *)malloc(1);
-  errstat res;
-  initid->extension = _open_sqlite_db(path, is_existing_db, message, &res);
-  if (!initid->extension) {
+  bool *is_existing_db = (bool *)my_malloc(sizeof(bool), MYF(MY_WME));
+
+  Mysqlite_share *share = Mysqlite_share::get_share();
+  if (!share) {
+    log_errstat(MYSQLITE_OUT_OF_MEMORY);
+    return 1;
+  }
+  errstat res = share->conn.open(path);
+  if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
+    // Newly create SQLite database file
+    *is_existing_db = false;
+  }
+  else if (res == MYSQLITE_OK) {
+    // SQLite database file already exists
+    dup_table_schema();
+    *is_existing_db = true;
+  }
+  else {
     log_errstat(res);
     return 1;
   }
@@ -187,12 +156,8 @@ my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
 
 void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
 {
-  FILE *f = (FILE *)initid->extension;
-  DBUG_ASSERT(f);
-  if (0 != fclose(f)) perror("fclose() failed\n");
-
   bool *is_existing_db = (bool *)initid->ptr;
-  free(is_existing_db);
+  my_free(is_existing_db);
 }
 
 /*
@@ -205,13 +170,7 @@ void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
 long long sqlite_db(UDF_INIT *initid, UDF_ARGS *args,
                     char *is_null, char *error)
 {
-  FILE *f_db = (FILE *)initid->extension;
-  bool is_existing_db = *((bool *)initid->ptr);
-
-  if (is_existing_db) {
-    dup_table_schema(f_db);
-  }
-
+  bool *is_existing_db = (bool *)initid->ptr;
   *is_null = 0;
-  return is_existing_db;
+  return *is_existing_db;
 }

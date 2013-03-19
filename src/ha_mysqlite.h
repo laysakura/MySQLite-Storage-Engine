@@ -59,7 +59,8 @@ public:
   mysqlite::Connection conn;   // TODO: Should a Connection be shared with all handlers??
   uint use_count;
 
-  static Mysqlite_share *get_share(); ///< Get the share
+  static Mysqlite_share *get_share(); // Get the share
+  static int free_share(Mysqlite_share *share); // Free the share
 
   Mysqlite_share();
   ~Mysqlite_share()

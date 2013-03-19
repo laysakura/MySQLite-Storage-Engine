@@ -113,12 +113,22 @@ static const char* mysqlite_system_database();
 static bool mysqlite_is_supported_system_table(const char *db,
                                       const char *table_name,
                                       bool is_sql_layer_system_table);
+
+static uchar* mysqlite_get_key(Mysqlite_share *share, size_t *length,
+                               my_bool not_used __attribute__((unused)))
+{
+  *length = strlen("global key");
+  return (uchar *)"global key";
+}
+
 #ifdef HAVE_PSI_INTERFACE
-static PSI_mutex_key ex_key_mutex_Mysqlite_share_mutex;
+static PSI_mutex_key mysqlite_key_mutex;
+static PSI_mutex_key mysqlite_key_mutex_Mysqlite_share_mutex;
 
 static PSI_mutex_info all_mysqlite_mutexes[]=
 {
-  { &ex_key_mutex_Mysqlite_share_mutex, "Mysqlite_share::mutex", 0}
+  { &mysqlite_key_mutex, "mysqlite", PSI_FLAG_GLOBAL},
+  { &mysqlite_key_mutex_Mysqlite_share_mutex, "Mysqlite_share::mutex", 0}
 };
 
 static void init_mysqlite_psi_keys()
@@ -134,8 +144,11 @@ static void init_mysqlite_psi_keys()
 Mysqlite_share::Mysqlite_share()
 {
   thr_lock_init(&lock);
-  mysql_mutex_init(ex_key_mutex_Mysqlite_share_mutex,
-                   &mutex, MY_MUTEX_INIT_FAST);
+
+  abort();
+  // mysql_mutex_init(mysqlite_key_mutex, &mysqlite_mutex, MY_MUTEX_INIT_FAST);
+  // (void) my_hash_init(&mysqlite_open_tables, system_charset_info, 32, 0, 0,
+  //                     (my_hash_get_key)mysqlite_get_key, 0, 0);
 }
 
 
@@ -148,6 +161,9 @@ static int mysqlite_init_func(void *p)
 #endif
 
   mysqlite_hton= (handlerton *)p;
+  mysql_mutex_init(mysqlite_key_mutex, &mysqlite_mutex, MY_MUTEX_INIT_FAST);
+  (void) my_hash_init(&mysqlite_open_tables, system_charset_info, 32, 0, 0,
+                      (my_hash_get_key)mysqlite_get_key, 0, 0);
   mysqlite_hton->state=                     SHOW_OPTION_YES;
   mysqlite_hton->create=                    mysqlite_create_handler;
   mysqlite_hton->flags=                     HTON_CAN_RECREATE;
@@ -157,6 +173,13 @@ static int mysqlite_init_func(void *p)
   DBUG_RETURN(0);
 }
 
+static int mysqlite_done_func(void *p)
+{
+  my_hash_free(&mysqlite_open_tables);
+  mysql_mutex_destroy(&mysqlite_mutex);
+
+  return 0;
+}
 
 /**
   @brief
@@ -182,15 +205,24 @@ Mysqlite_share *Mysqlite_share::get_share()
                                                 (const uchar *)"global key",
                                                 strlen("global key"))))  // TODO: Per table share
   {
+    if (!my_multi_malloc(MYF(MY_WME | MY_ZEROFILL),
+                         &share, sizeof(*share),
+                         NullS))
+    {
+      mysql_mutex_unlock(&mysqlite_mutex);
+      return NULL;
+    }
+
     share->use_count= 0;
 
     if (my_hash_insert(&mysqlite_open_tables, (uchar*) share))
       goto error;
     thr_lock_init(&share->lock);
-    /* mysql_mutex_init(csv_key_mutex_TINA_SHARE_mutex, */
-    /*                  &share->mutex, MY_MUTEX_INIT_FAST); */
+    mysql_mutex_init(mysqlite_key_mutex_Mysqlite_share_mutex,
+                     &share->mutex, MY_MUTEX_INIT_FAST);
   }
 
+  mysql_mutex_unlock(&mysqlite_mutex);
   DBUG_RETURN(share);
 
 error:
@@ -199,6 +231,26 @@ error:
   DBUG_RETURN(NULL);
 }
 
+/*
+  Free lock controls.
+*/
+int Mysqlite_share::free_share(Mysqlite_share *share)
+{
+  DBUG_ENTER("Mysqlite_share::free_share");
+  mysql_mutex_lock(&mysqlite_mutex);
+  int result_code= 0;
+  if (!--share->use_count) {
+    /* nakatani: あるテーブルへのリファレンスカウントが0になったら，本格的にshareにまつわるデータをfreeしていく */
+    share->conn.close();
+    my_hash_delete(&mysqlite_open_tables, (uchar*) share);
+    thr_lock_delete(&share->lock);
+    mysql_mutex_destroy(&share->mutex);
+    my_free(share);
+  }
+  mysql_mutex_unlock(&mysqlite_mutex);
+
+  DBUG_RETURN(result_code);
+}
 
 static handler* mysqlite_create_handler(handlerton *hton,
                                        TABLE_SHARE *table, 
@@ -346,7 +398,7 @@ int ha_mysqlite::open(const char *name, int mode, uint test_if_locked)
 int ha_mysqlite::close(void)
 {
   DBUG_ENTER("ha_mysqlite::close");
-  DBUG_RETURN(0);
+  DBUG_RETURN(Mysqlite_share::free_share(share));
 }
 
 
@@ -641,7 +693,8 @@ int ha_mysqlite::find_current_row(uchar *buf)
     else abort();
   }
 
-  DBUG_RETURN(0);
+  //DBUG_RETURN(0);
+  return 0;
 }
 
 
@@ -1054,7 +1107,7 @@ mysql_declare_plugin(mysqlite)
   "MySQLite Storage Engine",
   PLUGIN_LICENSE_GPL,
   mysqlite_init_func,                            /* Plugin Init */
-  NULL,                                         /* Plugin Deinit */
+  mysqlite_done_func,                            /* Plugin Deinit */
   MYSQLITE_VERSION_HEX,
   func_status,                                  /* status variables */
   mysqlite_system_variables,                     /* system variables */
