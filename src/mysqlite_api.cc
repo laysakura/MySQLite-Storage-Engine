@@ -145,7 +145,7 @@ bool FullscanCursor::next()
   errstat res;
   if (MYSQLITE_OK != (res = db_header.read())) {
     log_errstat(res);
-    return NULL;
+    return false;
   }
 
   BtreePage *cur_page = new BtreePage(f_db, &db_header,
