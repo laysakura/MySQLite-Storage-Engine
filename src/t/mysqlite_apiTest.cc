@@ -156,6 +156,8 @@ TEST(LongerThan2pow16, Wikipedia)
     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
     ASSERT_STREQ(rows->get_text(0), "http://en.wikipedia.org/wiki/Beer");
     string content(rows->get_text(1));
+    cout << rows->get_text(1) << endl;
+    cout << content << endl;
     ASSERT_EQ(content.size(), 66105u);
   }
 

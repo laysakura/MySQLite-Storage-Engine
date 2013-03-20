@@ -97,7 +97,7 @@ static inline u64 varint2u64(u8 *v,
     *len = 1;
     return res;
   }
-  for (int i = 1; i < 8; ++i) {
+  for (u8 i = 1; i < 8; ++i) {
     res = (res << 7) + (v[i] & 127);
     if ((v[i] & 128)  == 0) {
       *len = i + 1;
@@ -123,7 +123,7 @@ template<typename T>
 T u8s_to_val(const u8 * const p_sequence, u8 len_sequence) {
   assert(len_sequence > 0);
   T v = 0;
-  for (int i = 0; i < len_sequence; ++i)
+  for (u8 i = 0; i < len_sequence; ++i)
     v = (v << 8) + p_sequence[i];
   return v;
 }

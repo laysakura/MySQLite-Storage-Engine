@@ -141,29 +141,6 @@ struct BtreePathNode {
     : pgno(pgno), child_idx_to_visit(child_idx_to_visit) {}
 };
 
-struct CellPos {
-  Pgsz pgno;  // TODO: obsolete!! remove later
-
-  vector<BtreePathNode> visit_path;  // Save the history of traversal.
-               // Example:
-               //
-               // 0-+-0
-               //   |
-               //   +-1-+-0
-               //   |   |
-               //   +-2 +-1
-  Pgsz cpa_idx;
-  bool cursor_end;  // flag to indicate end of traversing
-
-  public:
-  CellPos(Pgno root_pgno)
-    : visit_path(1, BtreePathNode(root_pgno, 0)), cpa_idx(-1), cursor_end(false)
-  {}
-
-  public:  // TODO: private
-  CellPos() {}
-};
-
 
 static inline bool has_sqlite3_signature(FILE * const f)
 {
@@ -173,7 +150,7 @@ static inline bool has_sqlite3_signature(FILE * const f)
 }
 
 
-static inline u64 stype2len(Pgsz stype) {
+static inline u64 stype2len(u64 stype) {
   switch (stype) {
   case ST_NULL:
   case ST_C0:
@@ -470,7 +447,7 @@ class BtreePage : public Page {
     btree_page_type type = get_btree_type();
     Pgsz cpa_start = (type == INDEX_LEAF || type == TABLE_LEAF) ?
       BTREEHDR_SZ_LEAF : BTREEHDR_SZ_INTERIOR;
-    if (pgno == 1) cpa_start += DB_HEADER_SZ;
+    if (pgno == 1) cpa_start += static_cast<Pgsz>(DB_HEADER_SZ);
     return u8s_to_val<Pgsz>(&pg_data[cpa_start + CPA_ELEM_LEN * i], CPA_ELEM_LEN);
   }
 
@@ -536,7 +513,7 @@ public:
   bool digest_data() {
     u64 offset = 0;
     u8 len;
-    Pgsz hdr_sz = varint2u64(&data[offset], &len);
+    u64 hdr_sz = varint2u64(&data[offset], &len);
     offset += len;
 
     // Read column headers
@@ -574,7 +551,7 @@ struct RecordCell {
   u64 payload_sz_in_origpg;
   u64 rowid;
   Payload payload;
-  u32 overflow_pgno;  // First overflow page num. 0 when cell has no overflow page.
+  Pgno overflow_pgno;  // First overflow page num. 0 when cell has no overflow page.
 
   public:
   inline bool has_overflow_pg() const { return overflow_pgno != 0; }
@@ -756,74 +733,6 @@ private:
 
   private:
   TableBtree();
-
-  /*
-  ** Find a record from key recursively
-  */
-  private:
-  bool get_cellpos_by_key_aux(FILE *f_db,
-                              Pgno pgno, u64 key,
-                              /* out */
-                              CellPos *cellpos)
-  {
-    BtreePage *cur_page = new BtreePage(f_db, &db_header, pgno);
-    if (MYSQLITE_OK != cur_page->read()) {  // TODO: Cache
-      log_msg("Failed to read DB file");
-      delete cur_page;
-      return false;
-    }
-
-    btree_page_type btree_type = cur_page->get_btree_type();
-    assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
-
-    if (btree_type == TABLE_LEAF) {
-      // find a cell with its rowid == key
-      TableLeafPage *cur_leaf_page = static_cast<TableLeafPage *>(cur_page);
-      int n_cell = cur_leaf_page->get_n_cell();
-      for (int i = 0; i < n_cell; ++i) {
-        u64 rowid = cur_leaf_page->get_ith_cell_rowid(i);
-
-        if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
-          // found a cell to return.
-          cellpos->pgno = pgno;
-          cellpos->cpa_idx = i;
-          delete cur_page;
-          return true;
-        }
-      }
-      delete cur_page;
-      return false;
-    }
-    else if (btree_type == TABLE_INTERIOR) {
-      // jump to one of children nodes
-      TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(cur_page);
-      int n_cell = cur_interior_page->get_n_cell();
-      u64 prev_rowid = 0;
-      for (int i = 0; i < n_cell; ++i) {
-        struct TableInteriorPageCell cell;
-        cur_interior_page->get_ith_cell(i, &cell);
-        if (prev_rowid < key && key <= cell.rowid) {
-          // found next page to traverse
-          delete cur_page;
-          return get_cellpos_by_key_aux(f_db, cell.left_child_pgno, key,
-                                        cellpos);
-        }
-      }
-      // cell corresponding the key is in the rightmost child page
-      delete cur_page;
-      return get_cellpos_by_key_aux(f_db,
-                                    cur_interior_page->get_rightmost_pg(), key,
-                                    cellpos);
-    }
-    else abort();  // Asserted not to come here
-  }
-  public:
-  bool get_cellpos_by_key(FILE *f_db, Pgno root_pgno, u64 key,
-                          /* out */
-                          CellPos *cellpos) {
-    return get_cellpos_by_key_aux(f_db, root_pgno, key,
-                                  cellpos);
-  }
 };
 
 
