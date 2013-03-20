@@ -5,7 +5,7 @@ use warnings;
 
 use DBI;
 
-use Test::More tests => 16;
+use Test::More tests => 17;
 
 use File::Basename;
 use Cwd 'realpath';
@@ -47,12 +47,12 @@ is_deeply(
 
 
 # 1 table w/ so long schema (that it exeeds page#1 of SQLite DB)
-TODO: {
-    local $TODO = 'Reading table interior page and overflow page is not supported yet';
-    ok($dbh->do("drop table if exists test02_table1_ddl_long_t1"));
-    ok($dbh->do("select sqlite_db('$testdir/db/02-table1-ddl_long.sqlite')"));
-    ## select column_name ...
-}
+ok($dbh->do("drop table if exists test02_table1_ddl_long_t1"));
+ok($dbh->do("select sqlite_db('$testdir/db/02-table1-ddl_long.sqlite')"));
+is_deeply(
+    $dbh->selectall_arrayref("select column_name from information_schema.columns where table_name='test02_table1_ddl_long_t20'"),
+    [ ['col20'] ],
+);
 
 
 # Tables should be created on current DB
