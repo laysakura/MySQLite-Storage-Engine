@@ -170,6 +170,40 @@ void FullscanCursor::close()
   delete this;
 }
 
+/*
+  Find a next table leaf cell (record)
+  from a table whose root pgno is visit_path[0].pgno.
+
+  This function is called recursively by itself.
+  Every call to next() follows to return (return next()).
+  Since (interior|leaf) cells who have been visited are not
+  visited again, every call to next() has different RowCursor state.
+
+  (1) When visit_path.back().pgno points at leaf page:
+    - (1-1) If the leaf has more cell (record),
+        point the cell by cpa_idx and return true.
+    - (1-2) If the leaf does not have any cell (record),
+        jump back to the direct parent (table interior) node
+        by visit_path.pop_back() and call next() recursively.
+        Or if the leaf has no direct parent,
+        return false since all records are already fetched.
+  (2) When visit_path.back().pgno points at interior page:
+    - (2-1) If the interior has more left child cell or rightmost child,
+        jump to the child by visit_path.push_back()
+        and call next() recursively.
+    - (2-2) If the interior has no more child,
+        jump back to the direct parent (table interior) node
+        by visit_path.pop_back() and call next() recursively.
+        Or if the leaf has no direct parent,
+        return false since all records are already fetched.
+
+  Here, the procedure
+  "jump back to the direct parent (table interior) node
+   by visit_path.pop_back() and call next() recursively.
+   Or if the leaf has no direct parent,
+   return false since all records are already fetched."
+  is encapsulated as jump_to_parent_or_finish_traversal().
+*/
 bool FullscanCursor::next()
 {
   DbHeader db_header(f_db);
@@ -179,67 +213,56 @@ bool FullscanCursor::next()
     return false;
   }
 
-  BtreePage *cur_page = new BtreePage(f_db, &db_header,
-                                      visit_path.back().pgno);
-  assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
+  BtreePage cur_page(f_db, &db_header, visit_path.back().pgno);
+  assert(MYSQLITE_OK == cur_page.read());  // TODO: Cache
 
-  btree_page_type btree_type = cur_page->get_btree_type();
-  assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
-
-  // If at interior node, then to leftmost leaf
-  if (btree_type == TABLE_INTERIOR) {
-    TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(cur_page);
-    vector<BtreePathNode> path;
-    assert(cur_interior_page->get_path_to_leftmost_leaf(&path));
-    visit_path.insert(
-                     visit_path.end(),
-                               path.begin(), path.end()
-                               );
-
-    delete cur_page;
-    cur_page = new BtreePage(f_db, &db_header,
-                             visit_path.back().pgno);
-  }
-  assert(cur_page->get_btree_type() == TABLE_LEAF);
-
-  // get a cell
-  bool has_cell = cur_page->has_ith_cell(++cpa_idx);
-  if (has_cell) {
-    // cur_page has cell to point at
-    return true;
-  }
-  else if (!has_cell && visit_path.size() == 1) {
-    // leaf == root. And no more cell
-    return false;
-  }
-  else if (!has_cell && visit_path.size() > 1) {
-    // Jump to parent who has more children
-    while (visit_path.size() > 1) {
-      BtreePathNode child_node = visit_path.back();
-      visit_path.pop_back();
-      BtreePathNode parent_node = visit_path.back();
-
-      TableInteriorPage cur_interior_page(f_db, &db_header, parent_node.pgno);
-      if (cur_interior_page.has_ith_cell(child_node.sib_idx + 1)) {
-        // parent has next child
-        break;
-      }
+  if (TABLE_LEAF == cur_page.get_btree_type()) {
+    // (1) At leaf node,
+    TableLeafPage *cur_leaf_page = static_cast<TableLeafPage *>(&cur_page);
+    bool has_cell = cur_leaf_page->has_ith_cell(++cpa_idx);
+    if (has_cell) {
+      // (1-1) The leaf has more cell
+      return true;
+    } else {
+      // (1-2) The leaf has no more cell
+      cpa_idx = -1;
+      return jump_to_parent_or_finish_traversal() ?
+        next() : false;
     }
-    // go to leftmost leaf
-    TableInteriorPage *cur_interior_page = new TableInteriorPage(f_db, &db_header,
-                                                                 visit_path.back().pgno);
-    vector<BtreePathNode> path;
-    assert(cur_interior_page->get_path_to_leftmost_leaf(&path));
-    delete cur_interior_page;
-
-    visit_path.insert(
-                               visit_path.end(),
-                               path.begin(), path.end()
-                               );
-
-    return next();
   }
-  else assert(0);
+  else if (TABLE_INTERIOR == cur_page.get_btree_type()) {
+    // (2) At interior node,
+    TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(&cur_page);
+    Pgsz n_cell = cur_interior_page->get_n_cell();
+
+    if ((int)visit_path.back().child_idx_to_visit < n_cell) {
+      // (2-1) The interior has left child cell
+      struct TableInteriorPageCell cell;
+      cur_interior_page->get_ith_cell(visit_path.back().child_idx_to_visit,
+                                      &cell);
+      visit_path.push_back(BtreePathNode(cell.left_child_pgno, 0));
+      return next();
+    } else if ((int)visit_path.back().child_idx_to_visit == n_cell) {
+      // (2-1) The interior has rightmost child
+      visit_path.push_back(BtreePathNode(cur_interior_page->get_rightmost_pg(), 0));
+      return next();
+    } else {
+      // (2-2) The interior has no more child
+      return jump_to_parent_or_finish_traversal() ?
+        next() : false;
+    }
+  }
+  else abort();  // cur_page.get_btree_type() == TABLE_LEAF || TABLE_INTERIOR
+}
+
+bool FullscanCursor::jump_to_parent_or_finish_traversal()
+{
+  assert(visit_path.size() >= 1);
+  if (visit_path.size() == 1) return false;  // finish traversal
+
+  visit_path.pop_back();
+  ++visit_path.back().child_idx_to_visit;
+  return true;
 }
 
 

@@ -46,6 +46,18 @@ is_deeply(
     ],
 );
 
+## Long record (wich has overflow pages)
+ok($dbh->do("drop table if exists wikipedia"));
+ok($dbh->do("select sqlite_db('$testdir/db/03-wikipedia.sqlite')"));
+is_deeply(
+    $dbh->selectall_arrayref("select count(*) from Alcohol"),
+    [ [ 2 ] ]
+);
+is_deeply(
+    $dbh->selectall_arrayref("select length(content) from Alcohol"),
+    [ [ 66105 ], [ 57031 ] ]
+);
+
 ## Japanese Support
 TODO: {
     local $TODO = 'Japanese support';

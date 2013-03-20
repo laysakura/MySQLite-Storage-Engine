@@ -26,7 +26,7 @@ protected:
                //   +-1-+-0
                //   |   |
                //   +-2 +-1
-  Pgsz cpa_idx;
+  Pgsz cpa_idx;    // Cell Pointer Array index
 
   /*
   ** Whether to have remnant rows
@@ -82,6 +82,8 @@ class FullscanCursor : public RowCursor {
   public:
   virtual ~FullscanCursor();
 
+  private:
+  bool jump_to_parent_or_finish_traversal();
 };
 
 
@@ -121,7 +123,6 @@ private:
   RowCursor *table_fullscan(const char * const table);
   private:
   RowCursor *table_fullscan(Pgno tbl_root);
-
 };
 
 

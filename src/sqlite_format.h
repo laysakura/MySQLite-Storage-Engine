@@ -134,10 +134,11 @@ static inline mysqlite_type sqlite_type_to_mysqlite_type(sqlite_type st)
 
 struct BtreePathNode {
   Pgno pgno;
-  Pgno sib_idx;  // 0-origin
+  Pgno child_idx_to_visit;  // 0-origin
 
   public:
-  BtreePathNode(Pgno pgno, Pgno sib_idx) : pgno(pgno), sib_idx(sib_idx) {}
+  BtreePathNode(Pgno pgno, Pgno child_idx_to_visit)
+    : pgno(pgno), child_idx_to_visit(child_idx_to_visit) {}
 };
 
 struct CellPos {
@@ -172,7 +173,7 @@ static inline bool has_sqlite3_signature(FILE * const f)
 }
 
 
-static inline Pgsz stype2len(Pgsz stype) {
+static inline u64 stype2len(Pgsz stype) {
   switch (stype) {
   case ST_NULL:
   case ST_C0:
@@ -511,8 +512,8 @@ class BtreePage : public Page {
 */
 class Payload {
 public:
-  vector<Pgsz> cols_offset;
-  vector<Pgsz> cols_len;
+  vector<u64> cols_offset;    // Can be longer than Pgsz (overflow page)
+  vector<u64> cols_len;
   vector<sqlite_type> cols_type;
   u8 *data;                 // When payload has no overflow page,
                             // it points to a BtreePage's pg_data.
@@ -533,14 +534,14 @@ public:
   */
   public:
   bool digest_data() {
-    Pgsz offset = 0;
+    u64 offset = 0;
     u8 len;
     Pgsz hdr_sz = varint2u64(&data[offset], &len);
     offset += len;
 
     // Read column headers
     for (u64 read_hdr_sz = len; read_hdr_sz < hdr_sz; ) {
-      Pgsz stype = varint2u64(&data[offset], &len);
+      u64 stype = varint2u64(&data[offset], &len);
       offset += len;
       read_hdr_sz += len;
 
@@ -549,14 +550,14 @@ public:
       } else if (stype >= 12) {
         cols_type.push_back(stype % 2 == 0 ? ST_BLOB : ST_TEXT);
       } else {
-        log_msg("Invalid sqlite type (stype=%d)\n", stype);
+        log_msg("Invalid sqlite type (stype=%llu)\n", stype);
         return false;
       }
       cols_len.push_back(stype2len(stype));
     }
 
     // Read column bodies
-    for (vector<Pgsz>::iterator it = cols_len.begin();
+    for (vector<u64>::iterator it = cols_len.begin();
          it != cols_len.end();
          ++it)
     {
@@ -730,46 +731,6 @@ class TableInteriorPage : public BtreePage {
 
     cell->rowid = get_rowid(offset, &len);
   }
-
-  /*
-  ** 'this' page is not included in 'path'
-  */
-  public:
-  bool get_path_to_leftmost_leaf(/* out */ vector<BtreePathNode> *path) {
-    BtreePage *cur_page = this;
-    while (cur_page->get_btree_type() == TABLE_INTERIOR) {
-      // find leftmost child
-      TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(cur_page);
-      int n_cell = cur_interior_page->get_n_cell();
-      Pgno leftmost_child_pgno;
-      if (n_cell > 0) {
-        struct TableInteriorPageCell cell;
-        cur_interior_page->get_ith_cell(0, &cell);
-        leftmost_child_pgno = cell.left_child_pgno;
-      } else {
-        leftmost_child_pgno = cur_interior_page->get_rightmost_pg();
-      }
-
-      // jump to leftmost child
-      if (path->size() > 0) {
-        // 'this' should not be deleted
-        delete cur_page;
-      }
-      cur_page = new BtreePage(f_db, db_header, leftmost_child_pgno);
-      if (MYSQLITE_OK != cur_page->read()) goto read_err;  // TODO: Cache
-
-      // add to path
-      ;
-      path->push_back(BtreePathNode(cur_page->pgno, 0));
-    }
-    assert(cur_page->get_btree_type() == TABLE_LEAF);
-    return true;
-
-  read_err:
-    log_msg("Failed to read DB file");
-    delete cur_page;
-    return false;
-  }
 };
 
 
@@ -795,98 +756,6 @@ private:
 
   private:
   TableBtree();
-
-  /*
-  ** Retrieve a cell in order recursively
-  **
-  ** @param cellpos->pgno  First page to visit in this call
-  ** @param cellpos->visit_path  It suggests next page to visit
-  ** @param cellpos->cpa_idx  It suggests which cell to be retrieved.
-  **   If the index exceeds num of cells in pgno, jump to next page.
-  ** @param cellpos->cursor_end  true means end of traversal
-  ** @param at_leaf  true means pgno is table leaf page
-  */
-  private:
-  bool get_cellpos_fullscan_aux(FILE *f_db,
-                                /* inout */
-                                CellPos *cellpos)
-  {
-    assert(!cellpos->cursor_end);
-
-    BtreePage *cur_page = new BtreePage(f_db, &db_header,
-                                        cellpos->visit_path.back().pgno);
-    assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
-
-    btree_page_type btree_type = cur_page->get_btree_type();
-    assert(btree_type == TABLE_LEAF || btree_type == TABLE_INTERIOR);
-
-    // If at interior node, then to leftmost leaf
-    if (btree_type == TABLE_INTERIOR) {
-      TableInteriorPage *cur_interior_page = static_cast<TableInteriorPage *>(cur_page);
-      vector<BtreePathNode> path;
-      assert(cur_interior_page->get_path_to_leftmost_leaf(&path));
-      cellpos->visit_path.insert(
-        cellpos->visit_path.end(),
-        path.begin(), path.end()
-      );
-
-      delete cur_page;
-      cur_page = new BtreePage(f_db, &db_header,
-                               cellpos->visit_path.back().pgno);
-    }
-    assert(cur_page->get_btree_type() == TABLE_LEAF);
-
-    // get a cell
-    bool has_cell = cur_page->has_ith_cell(++cellpos->cpa_idx);
-    if (has_cell) {
-      // cur_page has cell to point at
-      return true;
-    }
-    else if (!has_cell && cellpos->visit_path.size() == 1) {
-      // leaf == root. And no more cell
-      cellpos->cursor_end = true;
-      return true;
-    }
-    else if (!has_cell && cellpos->visit_path.size() > 1) {
-      // Jump to parent who has more children
-      while (cellpos->visit_path.size() > 1) {
-        BtreePathNode child_node = cellpos->visit_path.back();
-        cellpos->visit_path.pop_back();
-        BtreePathNode parent_node = cellpos->visit_path.back();
-
-        TableInteriorPage cur_interior_page(f_db, &db_header, parent_node.pgno);
-        if (cur_interior_page.has_ith_cell(child_node.sib_idx + 1)) {
-          // parent has next child
-          break;
-        }
-      }
-      // go to leftmost leaf
-      TableInteriorPage *cur_interior_page = new TableInteriorPage(f_db, &db_header,
-                                                                   cellpos->visit_path.back().pgno);
-      vector<BtreePathNode> path;
-      assert(cur_interior_page->get_path_to_leftmost_leaf(&path));
-      delete cur_interior_page;
-
-      cellpos->visit_path.insert(
-        cellpos->visit_path.end(),
-        path.begin(), path.end()
-      );
-
-      return get_cellpos_fullscan_aux(f_db, cellpos);
-    }
-    else assert(0);
-  }
-
-  /*
-  ** Retrieve a cell in order recursively
-  */
-  public:
-  bool get_cellpos_fullscan(FILE *f_db,
-                            /* inout */
-                            CellPos *cellpos)
-  {
-    return get_cellpos_fullscan_aux(f_db, cellpos);
-  }
 
   /*
   ** Find a record from key recursively

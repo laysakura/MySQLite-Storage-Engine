@@ -129,7 +129,7 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
           // ST_C1 is used for value `1' instead of ST_INT8,
           // which has 0 length and can be specified only by stype.
           ASSERT_EQ(cell.payload.cols_type[col], ST_C1);
-          ASSERT_EQ(cell.payload.cols_len[col], 0);
+          ASSERT_EQ(cell.payload.cols_len[col], 0u);
         }
         else {
           ASSERT_EQ(cell.payload.cols_type[col], ST_INT8);
@@ -344,51 +344,6 @@ TEST(TableBtree, get_record_by_key_10000rec_4tab_4096psize)
     CellPos cell_pos;
     ASSERT_FALSE(tbl_btree.get_cellpos_by_key(f_db, 2, 2501, &cell_pos));
   }
-
-  fclose(f_db);
-}
-TEST(TableBtree, FindTableRootPage)
-{
-  string finding_tbl_name("Beer");
-  Pgno finding_tbl_rootpg = 0;
-
-  errstat res;
-  FILE *f_db = open_sqlite_db("db/FindTableRootPage.sqlite", &res);
-  ASSERT_TRUE(f_db);
-  ASSERT_EQ(res, MYSQLITE_OK);
-
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TableBtree tbl_btree(f_db);
-
-  // こういう探索関数を書こうねっていう提案
-
-  CellPos cellpos(1);  // cursor to sqlite_master
-  while (!cellpos.cursor_end) {
-    ASSERT_TRUE(tbl_btree.get_cellpos_fullscan(f_db, &cellpos));
-
-    TableLeafPage tbl_leaf_page(f_db, &db_header, cellpos.visit_path.back().pgno);
-    ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());  // TODO: cache
-
-    RecordCell cell;
-    if (!tbl_leaf_page.get_ith_cell(cellpos.cpa_idx, &cell) &&
-        cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
-      u8 *payload_data = new u8[cell.payload_sz];
-      assert(tbl_leaf_page.get_ith_cell(cellpos.cpa_idx, &cell, payload_data));
-    }
-
-    ASSERT_EQ(cell.payload.cols_type[SQLITE_MASTER_COLNO_NAME], ST_TEXT);
-    string tbl_name((char *)&cell.payload.data[cell.payload.cols_offset[SQLITE_MASTER_COLNO_NAME]],
-                    cell.payload.cols_len[SQLITE_MASTER_COLNO_NAME]);  //これもシンタックスシュガーが欲しい
-    if (tbl_name == finding_tbl_name) {
-      finding_tbl_rootpg =
-        u8s_to_val<Pgno>(&cell.payload.data[cell.payload.cols_offset[SQLITE_MASTER_COLNO_ROOTPAGE]],
-                         cell.payload.cols_len[SQLITE_MASTER_COLNO_ROOTPAGE]);
-      break;
-    }
-  }
-  ASSERT_EQ(finding_tbl_rootpg, 4u);
 
   fclose(f_db);
 }
