@@ -5,7 +5,7 @@ use warnings;
 
 use DBI;
 
-use Test::More tests => 8;
+use Test::More tests => 12;
 
 use File::Basename;
 use Cwd 'realpath';
@@ -48,14 +48,22 @@ is_deeply(
 
 ## Long record (wich has overflow pages)
 ok($dbh->do("drop table if exists wikipedia"));
-ok($dbh->do("select sqlite_db('$testdir/db/03-wikipedia.sqlite')"));
+ok($dbh->do("select sqlite_db('$testdir/db/wikipedia.sqlite')"));
 is_deeply(
-    $dbh->selectall_arrayref("select count(*) from Alcohol"),
-    [ [ 2 ] ]
+    $dbh->selectall_arrayref("select url from Alcohol"),
+    [
+        [ "http://en.wikipedia.org/wiki/Beer" ],
+        [ "http://en.wikipedia.org/wiki/Wine" ],
+    ]
 );
 is_deeply(
     $dbh->selectall_arrayref("select length(content) from Alcohol"),
-    [ [ 66105 ], [ 57031 ] ]
+    [
+        [ 65535 ],  # Although original SQLite DB has 66234 byte col,
+                    # MySQL's TEXT type allows at most 65535 byte.
+                    # TODO: Support MEDIUMTEXT and LONGTEXT.
+        [ 57151 ],
+    ]
 );
 
 ## Japanese Support
