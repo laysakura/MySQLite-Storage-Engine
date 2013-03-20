@@ -640,17 +640,17 @@ class TableLeafPage : public BtreePage {
     assert(cell->payload_sz_in_origpg < cell->payload_sz);
 
     // Copy payload from this page and overflow pages
-    Pgsz offset = 0;
+    u64 offset = 0;
     memcpy(&buf_overflown_payload[offset], cell->payload.data, cell->payload_sz_in_origpg);
     offset += cell->payload_sz_in_origpg;
     Pgsz usable_sz = db_header->get_pg_sz() - db_header->get_reserved_space();
-    Pgsz payload_sz_rem = cell->payload_sz - cell->payload_sz_in_origpg;
+    u64 payload_sz_rem = cell->payload_sz - cell->payload_sz_in_origpg;
 
     for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
       Page ovpg(f_db, db_header, overflow_pgno);
       assert(MYSQLITE_OK == ovpg.read());
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
-      Pgsz payload_sz_inpg = min<Pgsz>(usable_sz - sizeof(Pgno), payload_sz_rem);
+      Pgsz payload_sz_inpg = min<u64>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
       memcpy(&buf_overflown_payload[offset],
              &ovpg.pg_data[sizeof(Pgno)],
