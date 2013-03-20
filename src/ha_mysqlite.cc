@@ -98,6 +98,7 @@
 #include "utils.h"
 #include "probes_mysql.h"
 #include "mysqlite_api.h"
+#include "mysqlite_config.h"
 
 /* Stuff for shares */
 mysql_mutex_t mysqlite_mutex;
@@ -1121,10 +1122,10 @@ mysql_declare_plugin(mysqlite)
   PLUGIN_LICENSE_GPL,
   mysqlite_init_func,                            /* Plugin Init */
   mysqlite_done_func,                            /* Plugin Deinit */
-  MYSQLITE_VERSION_HEX,
-  func_status,                                  /* status variables */
+  MYSQLITE_VERSION,
+  func_status,                                   /* status variables */
   mysqlite_system_variables,                     /* system variables */
-  NULL,                                         /* config options */
+  NULL,                                          /* config options */
   0,
 }
 mysql_declare_plugin_end;

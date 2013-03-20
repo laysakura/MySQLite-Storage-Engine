@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "../sqlite_format.h"
+#include "../mysqlite_config.h"
 
 
 /*
@@ -24,7 +25,7 @@ public:
 TEST(BtreePage, BtreePageValidityCheck_success)
 {
   errstat res;
-  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite", &res);
+  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/BtreePage-empty-table.sqlite", &res);
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
@@ -40,7 +41,7 @@ TEST(BtreePage, BtreePageValidityCheck_success)
 TEST(BtreePage, BtreePageValidityCheck_page1)
 {
   errstat res;
-  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite", &res);
+  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/BtreePage-empty-table.sqlite", &res);
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
@@ -57,7 +58,7 @@ TEST(BtreePage, BtreePageValidityCheck_page1)
 TEST(BtreePage, get_ith_cell_offset_EmptyTable)
 {
   errstat res;
-  FILE *f_db = open_sqlite_db("db/BtreePage-empty-table.sqlite", &res);
+  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/BtreePage-empty-table.sqlite", &res);
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
@@ -74,7 +75,7 @@ TEST(BtreePage, get_ith_cell_offset_EmptyTable)
 TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 {
   errstat res;
-  FILE *f_db = open_sqlite_db("db/BtreePage-2cells-table.sqlite", &res);
+  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/BtreePage-2cells-table.sqlite", &res);
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
@@ -106,7 +107,7 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 TEST(TableLeafPage, get_ith_cell_2CellsTable)
 {
   errstat res;
-  FILE *f_db = open_sqlite_db("db/TableLeafPage-int.sqlite", &res);
+  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/TableLeafPage-int.sqlite", &res);
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
@@ -148,7 +149,7 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
 TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 {
   errstat res;
-  FILE *f_db = open_sqlite_db("db/TableLeafPage-2tables.sqlite", &res);
+  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/TableLeafPage-2tables.sqlite", &res);
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
@@ -180,7 +181,7 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 TEST(TableLeafPage, get_ith_cell_OverflowPage)
 {
   errstat res;
-  FILE *f_db = open_sqlite_db("db/TableLeafPage-overflowpage.sqlite", &res);
+  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/TableLeafPage-overflowpage.sqlite", &res);
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
@@ -214,7 +215,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
 TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
 {
   errstat res;
-  FILE *f_db = open_sqlite_db("db/TableLeafPage-overflowpage10000.sqlite", &res);
+  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/TableLeafPage-overflowpage10000.sqlite", &res);
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 

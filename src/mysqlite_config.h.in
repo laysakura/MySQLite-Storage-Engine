@@ -1,0 +1,18 @@
+/*
+  ../CMakeList.txt will produce mysqlite_config.h from this file.
+*/
+
+#ifndef _SQLITE_CONFIG_H_
+#define _SQLITE_CONFIG_H_
+
+
+// Version number
+#define MYSQLITE_VERSION_MAJOR @MYSQLITE_VERSION_MAJOR@
+#define MYSQLITE_VERSION_MINOR @MYSQLITE_VERSION_MINOR@
+#define MYSQLITE_VERSION (100 * MYSQLITE_VERSION_MAJOR + MYSQLITE_VERSION_MINOR)
+
+// Directory structure
+#define MYSQLITE_TEST_DB_DIR "@MYSQLITE_TEST_DB_DIR@"
+
+
+#endif /* _SQLITE_CONFIG_H_ */

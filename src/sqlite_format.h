@@ -188,12 +188,12 @@ static inline FILE *_open_sqlite_db(const char * const path,
     *is_existing_db = true;
     f = fopen(path, "r");
     if (!f) {
-      sprintf(message, "Permission denied: Cannot open %s in read mode.", path);
+      sprintf(message, "Permission denied: Cannot open %s in read mode.\n", path);
       *res = MYSQLITE_PERMISSION_DENIED;
       return NULL;
     }
     if (!has_sqlite3_signature(f)) {
-      sprintf(message, "Format error: %s does not seem SQLite3 database.", path);
+      sprintf(message, "Format error: %s does not seem SQLite3 database.\n", path);
       *res = MYSQLITE_CORRUPT_DB;
       return NULL;
     }
@@ -201,7 +201,7 @@ static inline FILE *_open_sqlite_db(const char * const path,
     *is_existing_db = false;
     f = fopen(path, "w+");
     if (!f) {
-      sprintf(message, "Permission denied: Cannot create %s.", path);
+      sprintf(message, "Permission denied: Cannot create %s.\n", path);
       *res = MYSQLITE_PERMISSION_DENIED;
       return NULL;
     }

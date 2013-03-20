@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "../mysqlite_api.h"
+#include "../mysqlite_config.h"
 
 
 TEST(TypicalUsage, SmallData)
@@ -8,7 +9,7 @@ TEST(TypicalUsage, SmallData)
   using namespace mysqlite;
 
   Connection conn;
-  errstat res = conn.open("db/BeerDB-small.sqlite");
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   RowCursor *rows = conn.table_fullscan("Beer");
@@ -33,7 +34,7 @@ TEST(CheckAllData, SmallData)
   using namespace mysqlite;
 
   Connection conn;
-  errstat res = conn.open("db/BeerDB-small.sqlite");
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   RowCursor *rows = conn.table_fullscan("Beer");
@@ -72,7 +73,7 @@ TEST(CheckAllData, SmallData_jp)
   using namespace mysqlite;
 
   Connection conn;
-  errstat res = conn.open("db/BeerDB-small-jp.sqlite");
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small-jp.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   RowCursor *rows = conn.table_fullscan("Beer");
@@ -111,7 +112,7 @@ TEST(OverflowPage, Wikipedia)
   using namespace mysqlite;
 
   Connection conn;
-  errstat res = conn.open("db/wikipedia.sqlite");
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/wikipedia.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   RowCursor *rows = conn.table_fullscan("ICTCompany");
@@ -144,7 +145,7 @@ TEST(LongerThan2pow16, Wikipedia)
   using namespace mysqlite;
 
   Connection conn;
-  errstat res = conn.open("db/wikipedia.sqlite");
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/wikipedia.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   RowCursor *rows = conn.table_fullscan("Alcohol");
