@@ -12,11 +12,10 @@ errstat Connection::open(const char * const db_path)
 {
   errstat res;
   f_db = open_sqlite_db(db_path, &res);
-  if (res == MYSQLITE_OK) {
+  if (res == MYSQLITE_OK || res == MYSQLITE_DB_FILE_NOT_FOUND) {
     assert(f_db);
     return res;
-  }
-  else {
+  } else {
     log_errstat(res);
     return res;
   }

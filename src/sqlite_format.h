@@ -228,7 +228,7 @@ static inline FILE *open_sqlite_db(const char * const existing_path,
   if (!f_ret) return NULL;
 
   if (!is_existing_db) {
-    if (0 != fclose(f_ret)) perror("fclose() failed\n");
+    abort();  // TODO: Opening (creating) new SQLite DB is not yet supported.
     *res = MYSQLITE_DB_FILE_NOT_FOUND;
     return NULL;
   }
