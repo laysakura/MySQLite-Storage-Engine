@@ -3,6 +3,9 @@
     And see get_cellpos_by_key_aux() which has been removed at commit 39c70d751
   - INTEGER PRIMARY KEY support. See http://www.sqlite.org/lang_createtable.html#rowid
   - Page cache, and cache for other data
+  - *Shared page cache* with all connections.
+    Single mysqld process treats all connections,
+    so it can defeat original SQLite with many connections.
   - Locks between mysql client (= mysqld threads).
     ha_tina.cc seems to implement table lock.  But not sure whether it has reader/writer lock...
     First, ignore any locks!!
@@ -13,13 +16,14 @@
       - http://www.sqlite.org/lockingv3.html
       - notebook
   - Table lock for maintaining cursor. See The Definitive Guide to SQLite - Table Locks"
-  - *Shared page cache* with all connections. Single mysqld process treats all connections, so it can defeat original SQLite with many connections.
+  - Support all result value types. See http://www.sqlite.org/c3ref/column_blob.html
   - More sophisticated memory allocation. See http://www.sqlite.org/malloc.html
   - Do not use bool as a return value. Rather use enum to show what kind of error happens.
-  - Support all result value types. See http://www.sqlite.org/c3ref/column_blob.html
   - Maria DB?  Mr. H said that Maria DB and MySQL already have API difference storage engine implementor should be concious about.
   - Get/Set DB name by using SQLite file name and current_thd->db.
   - NULL column support (in find_current_row()).
+  - MySQL cannot create column named 'sql', although I do not know why...
+    Check MySQL limitation on such names.
 
 * Fix
   - Log errors in APIs
