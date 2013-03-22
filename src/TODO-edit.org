@@ -1,6 +1,8 @@
 * Features to add
   - Support index scan. See http://dev.mysql.com/doc/internals/en/support-for-indexing.html
     And see get_cellpos_by_key_aux() which has been removed at commit 39c70d751
+    - See ha_myisam::index_read_map(), especially how *key parameter is treated.
+      *key has all information on search range.
   - INTEGER PRIMARY KEY support. See http://www.sqlite.org/lang_createtable.html#rowid
   - Page cache, and cache for other data
   - *Shared page cache* with all connections.
