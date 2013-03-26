@@ -1,6 +1,13 @@
 * Features to add
   - ずっと自分定義のconnectionを保持して，結局file descriptorを保持し続けているのがいけない．
     rnd_init()の度に少なくとも fopen() しなおさないと，SQLite からinsertされたことを検知できない．
+  - UDFでやっているSQLite -> MySQLなスキーマのコピーは，外部コマンドとしてやった方がよいかも．
+    UDFでやると，ストレージエンジンの中から新たにコネクションを作るみたいな変なことになってる．
+  - MySQLiteでSQLite DBを見ているときに，別のSQLiteプロセスにスキーマを変更されると，いけないことになる．
+    MySQLiteが，あるテーブルに対するクエリを検知する度に，SQLite DBの中身を再確認し，今自分が知っている
+    スキーマとSQLite DBの中のスキーマが対応しているかを確認する．
+    対応していなかったら，MySQLiteの側でエラーを出すというのが第一歩，
+    発展的には，エラーを出しつつSQLite DBのスキーマに追従したい．
   - Support index scan. See http://dev.mysql.com/doc/internals/en/support-for-indexing.html
     And see get_cellpos_by_key_aux() which has been removed at commit 39c70d751
     - See ha_myisam::index_read_map(), especially how *key parameter is treated.
