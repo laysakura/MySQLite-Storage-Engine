@@ -1,4 +1,6 @@
 * Features to add
+  - ずっと自分定義のconnectionを保持して，結局file descriptorを保持し続けているのがいけない．
+    rnd_init()の度に少なくとも fopen() しなおさないと，SQLite からinsertされたことを検知できない．
   - Support index scan. See http://dev.mysql.com/doc/internals/en/support-for-indexing.html
     And see get_cellpos_by_key_aux() which has been removed at commit 39c70d751
     - See ha_myisam::index_read_map(), especially how *key parameter is treated.
