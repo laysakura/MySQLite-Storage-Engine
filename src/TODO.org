@@ -3,9 +3,24 @@
 
 
 * Features to add
+  - ずっと自分定義のconnectionを保持して，結局file descriptorを保持し続けているのがいけない．
+    rnd_init()の度に少なくとも fopen() しなおさないと，SQLite からinsertされたことを検知できない．
+  - UDFでやっているSQLite -> MySQLなスキーマのコピーは，外部コマンドとしてやった方がよいかも．
+    UDFでやると，ストレージエンジンの中から新たにコネクションを作るみたいな変なことになってる．
+  - MySQLiteでSQLite DBを見ているときに，別のSQLiteプロセスにスキーマを変更されると，いけないことになる．
+    MySQLiteが，あるテーブルに対するクエリを検知する度に，SQLite DBの中身を再確認し，今自分が知っている
+    スキーマとSQLite DBの中のスキーマが対応しているかを確認する．
+    対応していなかったら，MySQLiteの側でエラーを出すというのが第一歩，
+    発展的には，エラーを出しつつSQLite DBのスキーマに追従したい．
   - Support index scan. See http://dev.mysql.com/doc/internals/en/support-for-indexing.html
+    And see get_cellpos_by_key_aux() which has been removed at commit 39c70d751
+    - See ha_myisam::index_read_map(), especially how *key parameter is treated.
+      *key has all information on search range.
   - INTEGER PRIMARY KEY support. See http://www.sqlite.org/lang_createtable.html#rowid
   - Page cache, and cache for other data
+  - *Shared page cache* with all connections.
+    Single mysqld process treats all connections,
+    so it can defeat original SQLite with many connections.
   - Locks between mysql client (= mysqld threads).
     ha_tina.cc seems to implement table lock.  But not sure whether it has reader/writer lock...
     First, ignore any locks!!
@@ -16,56 +31,57 @@
       - http://www.sqlite.org/lockingv3.html
       - notebook
   - Table lock for maintaining cursor. See The Definitive Guide to SQLite - Table Locks"
-  - *Shared page cache* with all connections. Single mysqld process treats all connections, so it can defeat original SQLite with many connections.
+  - Support all result value types. See http://www.sqlite.org/c3ref/column_blob.html
   - More sophisticated memory allocation. See http://www.sqlite.org/malloc.html
   - Do not use bool as a return value. Rather use enum to show what kind of error happens.
-  - Support all result value types. See http://www.sqlite.org/c3ref/column_blob.html
   - Maria DB?  Mr. H said that Maria DB and MySQL already have API difference storage engine implementor should be concious about.
   - Get/Set DB name by using SQLite file name and current_thd->db.
   - NULL column support (in find_current_row()).
+  - MySQL cannot create column named 'sql', although I do not know why...
+    Check MySQL limitation on such names.
 
 * Fix
   - Log errors in APIs
   - Reconsider when to read DB header. Everytime? Idiot.
+  - MySQL does not support quoted ("", '') table name when CREATE TABLE, while SQLite does.
+    Understandable error message.
 
 * TODOs in source files
 ** .cc
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:183:                                                strlen("global key"))))  // TODO: Per table share
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:569:    abort();    // TODO: More decent way to report SQLite db is not opened.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:633:  memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/udf_sqlite_db.cc:105:  // TODO: BUG: Connection should not be newly created.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/t/sqlite_formatTest.cc:372:    ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());  // TODO: cache
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:83:  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:84:  // TODO: So redundunt....
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:85:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:104:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:126:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:144:  // TODO: Cache... now memory leak
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:179:  assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:207:                                                strlen("global key"))))  // TODO: Per table share
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:622:    abort();    // TODO: More decent way to report SQLite db is not opened.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:689:  memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:701:          (*field)->store(s, strlen(s), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/udf_sqlite_db.cc:60:  // TODO: BUG: Connection should not be newly created.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:87:  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:88:  // TODO: So redundunt....
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:89:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:108:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:130:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:148:  // TODO: Cache... now memory leak
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:216:  assert(MYSQLITE_OK == cur_page.read());  // TODO: Cache
 
 ** .h
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.h:59:  mysqlite::Connection conn;   // TODO: Should a Connection be shared with all handlers??
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:123:    abort();  // TODO: support 64bit column int value.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:144:  Pgsz pgno;  // TODO: obsolete!! remove later
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:162:  public:  // TODO: private
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:431:    { // TODO: freeblock offset check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:435:    { // TODO: num of cell check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:439:    { // TODO: cell content area offset check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:445:    { // TODO: num of fragmentation check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:759:      if (MYSQLITE_OK != cur_page->read()) goto read_err;  // TODO: Cache
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:778:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:779:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:780:                            // TODO: should treated as cursor
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:781:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:818:    assert(MYSQLITE_OK == cur_page->read());  // TODO: Cache
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:901:    if (MYSQLITE_OK != cur_page->read()) {  // TODO: Cache
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:917:        if (key == rowid) {  // TODO: Is assuming key == rowid OK? No cluster index?
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:231:    abort();  // TODO: Opening (creating) new SQLite DB is not yet supported.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:409:    { // TODO: freeblock offset check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:413:    { // TODO: num of cell check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:417:    { // TODO: cell content area offset check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:423:    { // TODO: num of fragmentation check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:716:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:717:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:718:                            // TODO: should treated as cursor
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:719:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:51:  const char *get_text(int colno) const;  // TODO: how to prevent memory leak? Self mem mngmt?
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:62:** TODO: Move this class to other file so that user cannot see it.
 
 ** .t
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table.t:50:TODO: {
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table.t:51:    local $TODO = 'Reading table interior page and overflow page is not supported yet';
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table-mysql-incompat.t:22:TODO: {
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table-mysql-incompat.t:23:    local $TODO = 'DDL of SQLite incompatible with MySQL is not supported yet.';
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/03-select-fullscan.t:64:                    # TODO: Support MEDIUMTEXT and LONGTEXT.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/03-select-fullscan.t:70:TODO: {
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/03-select-fullscan.t:71:    local $TODO = 'Japanese support';
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table.t:59:TODO: {
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/t/02-auto-create-table.t:60:    local $TODO = 'BUG: mysql_real_connect hard coding';
 
