@@ -163,3 +163,24 @@ TEST(LongerThan2pow16, Wikipedia)
   rows->close();
   conn.close();
 }
+
+TEST(ST_C0_and_ST_C1, TableLeafPage_int)
+{
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/TableLeafPage-int.sqlite");
+  ASSERT_EQ(res, MYSQLITE_OK);
+
+  RowCursor *rows = conn.table_fullscan("t1");
+  ASSERT_TRUE(rows);
+
+  { // 1st row
+    rows->next();
+    ASSERT_EQ(rows->get_type(0), MYSQLITE_INTEGER);
+    ASSERT_EQ(rows->get_int(0), 1);  // This is represented as ST_C1 internally
+  }
+
+  rows->close();
+  conn.close();
+}

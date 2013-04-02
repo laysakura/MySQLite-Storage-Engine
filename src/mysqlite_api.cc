@@ -122,8 +122,16 @@ int RowCursor::get_int(int colno) const
     u8 *payload_data = new u8[cell.payload_sz];
     assert(tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data));
   }
-  return u8s_to_val<int>(&cell.payload.data[cell.payload.cols_offset[colno]],
-                         cell.payload.cols_len[colno]);
+  if (cell.payload.cols_type[colno] == ST_C0) {
+    return 0;
+  }
+  else if (cell.payload.cols_type[colno] == ST_C1) {
+    return 1;
+  }
+  else {
+    return u8s_to_val<int>(&cell.payload.data[cell.payload.cols_offset[colno]],
+                           cell.payload.cols_len[colno]);
+  }
 }
 const char *RowCursor::get_text(int colno) const
 {
