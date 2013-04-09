@@ -24,6 +24,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <sql_plugin.h>
+
 #include "mysqlite_types.h"
 #include "utils.h"
 
@@ -255,11 +257,11 @@ private:
     : f_db(f_db)
   {
     assert(f_db);
-    assert(hdr_data = (u8 *)malloc(DB_HEADER_SZ));
+    assert(hdr_data = (u8 *)my_malloc(DB_HEADER_SZ, MYF(0)));
   }
   public:
   ~DbHeader() {
-    free(hdr_data);
+    my_free(hdr_data);
   }
 
   public:
@@ -306,11 +308,11 @@ public:
   {
     assert(f_db);
     assert(db_header);
-    assert(pg_data = (u8 *)malloc(db_header->get_pg_sz()));
+    assert(pg_data = (u8 *)my_malloc(db_header->get_pg_sz(), MYF(0)));
   }
   public:
   virtual ~Page() {
-    free(pg_data);
+    my_free(pg_data);
   }
 
   public:
