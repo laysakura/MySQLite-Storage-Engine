@@ -171,6 +171,10 @@ static int mysqlite_init_func(void *p)
   mysqlite_hton->system_database=   mysqlite_system_database;
   mysqlite_hton->is_supported_system_table= mysqlite_is_supported_system_table;
 
+  // Page cache
+  PageCache *pcache = PageCache.get_instance();
+  pcache->alloc(MYSQLITE_PCACHE_SZ);
+
   DBUG_RETURN(0);
 }
 
@@ -178,6 +182,10 @@ static int mysqlite_done_func(void *p)
 {
   my_hash_free(&mysqlite_open_tables);
   mysql_mutex_destroy(&mysqlite_mutex);
+
+  // Page cache
+  PageCache *pcache = PageCache.get_instance();
+  pcache->free();
 
   return 0;
 }

@@ -44,6 +44,8 @@
 #define DBHDR_RESERVEDSPACE_OFFSET 20
 #define DBHDR_RESERVEDSPACE_LEN 1
 
+#define PAGE_MIN_SZ 512
+
 #define BTREEHDR_SZ_LEAF 8
 #define BTREEHDR_SZ_INTERIOR 12
 
@@ -244,28 +246,38 @@ static inline FILE *open_sqlite_db(const char * const existing_path,
 */
 class DbHeader {
 private:
-  FILE * const f_db;
   u8 *hdr_data;
 
-  /*
-  ** @note
-  ** Constructor does not read(2) page contents.
-  ** Call this->read() after object is constructed.
-  */
+  /**
+   * @note
+   * Default constructor.
+   * This assumes page#1 of DB file is on pcache(0).
+   */
+  public:
+  DbHeader() {
+    PageCache *pcache = PageCache.get_instance();
+    hdr_data = pcache->fetch(SQLITE_MASTER_ROOTPGNO);
+  }
+  /**
+   * @note
+   * Should be called only once per SQLite DB file.
+   * Caller of this function should tell page size to page cache
+   * and put page#1 of the DB file onto pcache(0).
+   */
   public:
   DbHeader(FILE * const f_db)
-    : f_db(f_db)
   {
     assert(f_db);
     assert(hdr_data = (u8 *)my_malloc(DB_HEADER_SZ, MYF(0)));
+    assert(MYSQLITE_OK == this->read(f_db));
   }
   public:
   ~DbHeader() {
     my_free(hdr_data);
   }
 
-  public:
-  errstat read() const {
+  private:
+  errstat read(FILE * const f_db) const {
     return mysqlite_fread(hdr_data, 0, DB_HEADER_SZ, f_db);
   }
 
