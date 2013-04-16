@@ -13,7 +13,7 @@ class sqlite_formatEnvironment : public ::testing::Environment {
 public:
   void SetUp() {
     PageCache *pcache = PageCache::get_instance();
-    pcache->alloc(MYSQLITE_PCACHE_SZ);
+    pcache->alloc(1024 * 100);
   }
   void TearDown() {
     PageCache *pcache = PageCache::get_instance();
