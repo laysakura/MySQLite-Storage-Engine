@@ -2,7 +2,25 @@
 
 #include "../mysqlite_api.h"
 #include "../sqlite_format.h"
+#include "../pcache.h"
 #include "../mysqlite_config.h"
+
+
+/**
+ * Materialize page cache
+ */
+class sqlite_formatEnvironment : public ::testing::Environment {
+public:
+  void SetUp() {
+    PageCache *pcache = PageCache::get_instance();
+    pcache->alloc(MYSQLITE_PCACHE_SZ);
+  }
+  void TearDown() {
+    PageCache *pcache = PageCache::get_instance();
+    pcache->free();
+  }
+};
+::testing::Environment* const sf_env = ::testing::AddGlobalTestEnvironment(new sqlite_formatEnvironment);
 
 
 /*
@@ -37,36 +55,39 @@ TEST(BtreePage, BtreePageValidityCheck_success)
 }
 TEST(BtreePage, BtreePageValidityCheck_page1)
 {
-  errstat res;
-  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/BtreePage-empty-table.sqlite", &res);
-  ASSERT_TRUE(f_db);
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BtreePage-empty-table.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TBtreePage btree_page(1);
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_TRUE(btree_page.is_valid_hdr());
 
-  fclose(f_db);
+  conn.close();
 }
 
 TEST(BtreePage, get_ith_cell_offset_EmptyTable)
 {
-  errstat res;
-  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/BtreePage-empty-table.sqlite", &res);
-  ASSERT_TRUE(f_db);
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BtreePage-empty-table.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TBtreePage btree_page(2);
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_EQ(0, btree_page.get_ith_cell_offset(0));
 
-  fclose(f_db);
+  conn.close();
 }
 TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 {
-  errstat res;
-  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/BtreePage-2cells-table.sqlite", &res);
-  ASSERT_TRUE(f_db);
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BtreePage-2cells-table.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TBtreePage btree_page(2);
@@ -83,7 +104,7 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
     ASSERT_EQ(btree_page.get_ith_cell_offset(2), 0);
   }
 
-  fclose(f_db);
+  conn.close();
 }
 
 
@@ -92,12 +113,14 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 */
 TEST(TableLeafPage, get_ith_cell_2CellsTable)
 {
-  errstat res;
-  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/TableLeafPage-int.sqlite", &res);
-  ASSERT_TRUE(f_db);
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/TableLeafPage-int.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TableLeafPage tbl_leaf_page(2);
+  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     for (u64 row = 0; row < 2; ++row) {
       RecordCell cell;
@@ -125,16 +148,18 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
     }
   }
 
-  fclose(f_db);
+  conn.close();
 }
 TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 {
-  errstat res;
-  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/TableLeafPage-2tables.sqlite", &res);
-  ASSERT_TRUE(f_db);
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/TableLeafPage-2tables.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TableLeafPage tbl_leaf_page(1); // sqlite_master
+  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     for (u64 row = 0; row < 2; ++row) {
       RecordCell cell;
@@ -152,16 +177,18 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
     }
   }
 
-  fclose(f_db);
+  conn.close();
 }
 TEST(TableLeafPage, get_ith_cell_OverflowPage)
 {
-  errstat res;
-  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/TableLeafPage-overflowpage.sqlite", &res);
-  ASSERT_TRUE(f_db);
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/TableLeafPage-overflowpage.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TableLeafPage tbl_leaf_page(2);
+  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     RecordCell cell;
 
@@ -181,16 +208,18 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
     delete payload_data;
   }
 
-  fclose(f_db);
+  conn.close();
 }
 TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
 {
-  errstat res;
-  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/TableLeafPage-overflowpage10000.sqlite", &res);
-  ASSERT_TRUE(f_db);
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/TableLeafPage-overflowpage10000.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TableLeafPage tbl_leaf_page(2);
+  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     RecordCell cell;
 
@@ -210,5 +239,5 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
     delete payload_data;
   }
 
-  fclose(f_db);
+  conn.close();
 }

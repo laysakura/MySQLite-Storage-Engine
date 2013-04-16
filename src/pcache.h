@@ -86,7 +86,7 @@ private:
    * If the specified page is on the page cache, it is returned.
    * Otherwise, the page is read from DB file onto page cache and it is returned.
    */
- public:
+  public:
   u8 *fetch(Pgno pgno) const {
     assert(pgno >= 1);
     assert(is_ready());
@@ -99,7 +99,8 @@ private:
     else {
       // Page#pgno should be read(2) from DB file
       // TODO: cache eviction
-      assert(MYSQLITE_OK == mysqlite_fread(&the_cache[pcno * pgsz], pgno * pgsz, pgsz, f_db));
+      assert(f_db);
+      assert(MYSQLITE_OK == mysqlite_fread(&the_cache[pcno * pgsz], (pgno - 1) * pgsz, pgsz, f_db));
       return &the_cache[pcno * pgsz];
     }
   }

@@ -34,8 +34,6 @@ bool Connection::is_opened() const
 
 void Connection::close()
 {
-  PageCache *pcache = PageCache::get_instance();
-  pcache->free();
 }
 
 RowCursor *Connection::table_fullscan(const char * const table)

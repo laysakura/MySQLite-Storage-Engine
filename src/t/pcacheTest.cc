@@ -5,16 +5,6 @@
 #include "../mysqlite_config.h"
 
 
-/* class PcacheEnvironment : public ::testing::Environment { */
-/* public: */
-/*   void TearDown() { */
-/*     PageCache *pcache = PageCache::get_instance(); */
-/*     pcache->free();  // Page cache must be freed only once in a process. */
-/*   } */
-/* }; */
-/* ::testing::Environment* const pc_env = ::testing::AddGlobalTestEnvironment(new PcacheEnvironment); */
-
-
 TEST(pcache, correct_DBHeader)
 {
   errstat res;
