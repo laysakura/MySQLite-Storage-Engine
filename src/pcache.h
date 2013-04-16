@@ -2,6 +2,10 @@
 #define _PCACHE_H_
 
 
+#include "mysqlite_types.h"
+#include "utils.h"
+
+
 /**
  * PageCache
  *
@@ -24,7 +28,7 @@ private:
    * The interface to get instance
    */
   public:
-  static PageCache get_instance() const {
+  static PageCache *get_instance() {
     static PageCache instance;
     return &instance;
   }
@@ -35,21 +39,7 @@ private:
    * Called when new SQLite DB is attached
    */
   public:
-  void refresh(FILE * const new_f_db) {
-    f_db = new_f_db;
-
-    // Check page size of new_f_db
-    DbHeader db_header(new_f_db);
-    pgsz = new_f_db.get_pg_sz();
-    n_pg = (pcache_sz / new_pgsz) + 1;
-
-    // 0-fill memory
-    memset(the_cache, 0, pcache_sz + pcache_idx_sz());
-
-    // Put DB page#1 onto pcache(0)
-    pcache_idx[0] = SQLITE_MASTER_ROOTPGNO;
-    mysqlite_fread(&the_cache[0], 0, pgsz, f_db);
-  }
+  errstat refresh(const char * const db_path);
 
   /**
    * Allocate heap
@@ -59,11 +49,8 @@ private:
   public:
   void alloc(u64 pcache_sz) {
     this->pcache_sz = pcache_sz;
-
-    // The number of elements of the_cache is "(pcache_sz / 512) + 1"
-    // since 512 is the least page size of SQLite.
-    // Therefore, len(pcache_idx) >= n_pg always suffices.
-    the_cache = new u8[pcache_sz + pcache_idx_sz()];
+    the_cache = new u8[pcache_sz + pcache_idx_sz()]; // TODO: more sophisticated mem allocation
+                                                     // (see InnoDB's ut_malloc())
     pcache_idx = (Pgno *)(the_cache + pcache_sz);
   }
 
@@ -74,13 +61,17 @@ private:
    */
   public:
   void free() {
-    delte the_cache;
+    if (f_db) fclose(f_db);
+    delete the_cache;
   }
 
+  /**
+   * The number of elements of the_cache is "(pcache_sz / 512) + 1"
+   * since 512 is the least page size of SQLite.
+   * Therefore, len(pcache_idx) >= n_pg always suffices.
+   */
   private:
-  inline u64 pcache_idx_sz() const {
-    return sizeof(Pgno) * ((pcache_sz / PAGE_MIN_SZ) + 1);
-  }
+  u64 pcache_idx_sz() const;
 
   /**
    * Fetch page
@@ -88,10 +79,10 @@ private:
    * If the specified page is on the page cache, it is returned.
    * Otherwise, the page is read from DB file onto page cache and it is returned.
    */
-  public:
-  u8 *fetch(Pgno pgno) {
+ public:
+  u8 *fetch(Pgno pgno) const {
     assert(pgno >= 1);
-    assert(pcache_idx[0] == SQLITE_MASTER_ROOTPGNO);  // Suffices after refresh() is called
+    assert(is_ready());
 
     Pgno pcno = pgno_to_pcacheno(pgno);
     if (pgno == pcache_idx[pcno]) {
@@ -106,14 +97,31 @@ private:
     }
   }
 
-private:
+  /**
+   * Whether page cache is ready to use
+   */
+ public:
+  bool is_ready() const {
+    return f_db != NULL;
+  }
+
+  /**
+   * Hash function to map SQLite DB page number -> pcache number
+   */
+ private:
+  Pgno pgno_to_pcacheno(Pgno pgno) const {
+    if (pgno == 1) return 0;  // page#1 should be always on pcache
+    return 1 + (pgno - 2) % n_pg;
+  }
+
+ private:
   // Prohibit any way to create instance from outsiders
-  PageCache()
-    : pcache_sz(0), n_pg(0), pgsz(0),
-      the_cache(NULL), pcache_idx(NULL), f_db(NULL)
-  {};
-  PageCache(const PageCache& obj);
-  PageCache& oprator=(const PageCache& obj);
+ PageCache()
+   : pcache_sz(0), n_pg(0), pgsz(0),
+    the_cache(NULL), pcache_idx(NULL), f_db(NULL)
+    {}
+  PageCache(const PageCache&);
+  PageCache& operator=(const PageCache&);
 };
 
 

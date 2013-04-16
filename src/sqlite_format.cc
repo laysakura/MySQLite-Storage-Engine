@@ -1,0 +1,31 @@
+#include "sqlite_format.h"
+#include "pcache.h"
+
+
+/***********************************************************************
+** DbHeader class
+***********************************************************************/
+Pgsz DbHeader::get_pg_sz()
+{
+  PageCache *pcache = PageCache::get_instance();
+  u8 *hdr_data = pcache->fetch(0);
+  return u8s_to_val<Pgsz>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
+}
+
+Pgsz DbHeader::get_reserved_space()
+{
+  PageCache *pcache = PageCache::get_instance();
+  u8 *hdr_data = pcache->fetch(0);
+  return u8s_to_val<Pgsz>(&hdr_data[DBHDR_RESERVEDSPACE_OFFSET], DBHDR_RESERVEDSPACE_LEN);
+}
+
+
+/***********************************************************************
+** Page class
+***********************************************************************/
+errstat Page::fetch()
+{
+  PageCache *pcache = PageCache::get_instance();
+  pg_data = pcache->fetch(pgno);
+  return MYSQLITE_OK;  // TODO: page cache should return status
+}

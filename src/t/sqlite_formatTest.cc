@@ -9,10 +9,8 @@
 */
 class TBtreePage : public BtreePage {
 public:
-  TBtreePage(FILE * const f_db,
-             const DbHeader * const db_header,
-             Pgno pg_id)
-    : BtreePage(f_db, db_header, pg_id)
+  TBtreePage(Pgno pg_id)
+    : BtreePage(pg_id)
   {}
   Pgsz get_ith_cell_offset(Pgsz i) {
     return BtreePage::get_ith_cell_offset(i);

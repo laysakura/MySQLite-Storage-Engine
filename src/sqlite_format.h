@@ -81,61 +81,6 @@
 #define SQLITE3_VARINT_MAXLEN 9
 
 
-/*
-  SQLite internal types
-*/
-typedef u32 Pgno;
-typedef u16 Pgsz;
-typedef u64 Rowid;
-
-typedef enum btree_page_type {
-  INDEX_INTERIOR     = 2,
-  TABLE_INTERIOR     = 5,
-  INDEX_LEAF         = 10,
-  TABLE_LEAF         = 13,
-} btree_page_type;
-
-typedef enum sqlite_type {
-  ST_NULL =  0,
-  ST_INT8 =  1,
-  ST_INT16 = 2,
-  ST_INT24 = 3,
-  ST_INT32 = 4,
-  ST_INT48 = 5,
-  ST_INT64 = 6,
-  ST_FLOAT = 7,
-  ST_C0 =    8,
-  ST_C1 =    9,
-  ST_BLOB,   /* >= 12, even */
-  ST_TEXT,   /* >= 13, odd  */
-} sqlite_type;
-
-static inline mysqlite_type sqlite_type_to_mysqlite_type(sqlite_type st)
-{
-  switch (st) {
-  case ST_NULL:
-    return MYSQLITE_NULL;
-  case ST_C0:
-  case ST_C1:
-  case ST_INT8:
-  case ST_INT16:
-  case ST_INT24:
-  case ST_INT32:
-    return MYSQLITE_INTEGER;
-  case ST_INT48:
-  case ST_INT64:
-    abort();  // TODO: support 64bit column int value.
-  case ST_FLOAT:
-    return MYSQLITE_FLOAT;
-  case ST_BLOB:
-    return MYSQLITE_BLOB;
-  case ST_TEXT:
-    return MYSQLITE_TEXT;
-  }
-  // Just for avoiding warning
-  return MYSQLITE_NULL;
-}
-
 struct BtreePathNode {
   Pgno pgno;
   Pgno child_idx_to_visit;  // 0-origin
@@ -242,101 +187,50 @@ static inline FILE *open_sqlite_db(const char * const existing_path,
 
 
 /*
-** Database header
+** Database header functions.
+**
+** Real data is always on page cache(0).
 */
 class DbHeader {
+  public:
+  static Pgsz get_pg_sz();
+
+  public:
+  static Pgsz get_reserved_space();
+
 private:
-  u8 *hdr_data;
-
-  /**
-   * @note
-   * Default constructor.
-   * This assumes page#1 of DB file is on pcache(0).
-   */
-  public:
-  DbHeader() {
-    PageCache *pcache = PageCache.get_instance();
-    hdr_data = pcache->fetch(SQLITE_MASTER_ROOTPGNO);
-  }
-  /**
-   * @note
-   * Should be called only once per SQLite DB file.
-   * Caller of this function should tell page size to page cache
-   * and put page#1 of the DB file onto pcache(0).
-   */
-  public:
-  DbHeader(FILE * const f_db)
-  {
-    assert(f_db);
-    assert(hdr_data = (u8 *)my_malloc(DB_HEADER_SZ, MYF(0)));
-    assert(MYSQLITE_OK == this->read(f_db));
-  }
-  public:
-  ~DbHeader() {
-    my_free(hdr_data);
-  }
-
-  private:
-  errstat read(FILE * const f_db) const {
-    return mysqlite_fread(hdr_data, 0, DB_HEADER_SZ, f_db);
-  }
-
-  public:
-  Pgsz get_pg_sz() const {
-    return u8s_to_val<Pgsz>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
-  }
-
-  public:
-  Pgsz get_reserved_space() const {
-    return u8s_to_val<Pgsz>(&hdr_data[DBHDR_RESERVEDSPACE_OFFSET], DBHDR_RESERVEDSPACE_LEN);
-  }
-
-  // Prohibit default constructor
-  private:
-  DbHeader() : f_db(NULL) {}
+  // Prohibit any way to create instance
+  DbHeader();
+  DbHeader(const DbHeader&);
+  DbHeader& operator=(const DbHeader&);
 };
 
 /*
 ** Page class
 */
 class Page {
-protected:
-  FILE * const f_db;
 public:
   u8 *pg_data;
-  const DbHeader * const db_header;
   Pgno pgno;
 
   /*
   ** @note
   ** Constructor does not read(2) page contents.
-  ** Call this->read() after object is constructed.
+  ** Call this->fetch() after object is constructed.
   */
   public:
-  Page(FILE * const f_db,
-       const DbHeader * const db_header,
-       Pgno pgno)
-    : f_db(f_db), db_header(db_header), pgno(pgno)
-  {
-    assert(f_db);
-    assert(db_header);
-    assert(pg_data = (u8 *)my_malloc(db_header->get_pg_sz(), MYF(0)));
-  }
+  Page(Pgno pgno)
+    : pgno(pgno)
+  {}
   public:
-  virtual ~Page() {
-    my_free(pg_data);
-  }
+  virtual ~Page() {}
 
   public:
-  errstat read() const {
-    assert(db_header);
-    Pgsz pg_sz = db_header->get_pg_sz();
-    return mysqlite_fread(pg_data, pg_sz * (pgno - 1), pg_sz, f_db);
-  }
+  errstat fetch();
 
   // Prohibit default constructor
-  private:
-  Page() : f_db(NULL), db_header(NULL) {}
+ private:
+  Page();
 };
 
 /*
@@ -344,10 +238,8 @@ public:
 */
 class BtreePage : public Page {
   public:
-  BtreePage(FILE * const f_db,
-            const DbHeader * const db_header,
-            Pgno pgno)
-    : Page(f_db, db_header, pgno)
+  BtreePage(Pgno pgno)
+    : Page(pgno)
   {}
 
   // Btree header info
@@ -489,8 +381,8 @@ class BtreePage : public Page {
 
   // Page management
   public:
-  errstat read() const {
-    errstat res = Page::read();
+  errstat fetch() {
+    errstat res = Page::fetch();
     if (res != MYSQLITE_OK) return res;
     if (!is_valid_hdr()) return MYSQLITE_CORRUPT_DB;
     return MYSQLITE_OK;
@@ -573,10 +465,8 @@ struct RecordCell {
 
 class TableLeafPage : public BtreePage {
   public:
-  TableLeafPage(FILE * const f_db,
-                const DbHeader * const db_header,
-                Pgno pgno)
-   : BtreePage(f_db, db_header, pgno)
+  TableLeafPage(Pgno pgno)
+   : BtreePage(pgno)
   {}
 
   /*
@@ -608,7 +498,7 @@ class TableLeafPage : public BtreePage {
 
     // Overflow page treatment
     // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
-    Pgsz usable_sz = db_header->get_pg_sz() - db_header->get_reserved_space();
+    Pgsz usable_sz = DbHeader::get_pg_sz() - DbHeader::get_reserved_space();
     Pgsz max_local = usable_sz - 35;
     if (cell->payload_sz <= max_local) {
       // no overflow page
@@ -657,12 +547,12 @@ class TableLeafPage : public BtreePage {
     u64 offset = 0;
     memcpy(&buf_overflown_payload[offset], cell->payload.data, cell->payload_sz_in_origpg);
     offset += cell->payload_sz_in_origpg;
-    Pgsz usable_sz = db_header->get_pg_sz() - db_header->get_reserved_space();
+    Pgsz usable_sz = DbHeader::get_pg_sz() - DbHeader::get_reserved_space();
     u64 payload_sz_rem = cell->payload_sz - cell->payload_sz_in_origpg;
 
     for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
-      Page ovpg(f_db, db_header, overflow_pgno);
-      assert(MYSQLITE_OK == ovpg.read());
+      Page ovpg(overflow_pgno);
+      assert(MYSQLITE_OK == ovpg.fetch());
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
       Pgsz payload_sz_inpg = min<u64>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
@@ -704,10 +594,8 @@ struct TableInteriorPageCell {
 
 class TableInteriorPage : public BtreePage {
   public:
-  TableInteriorPage(FILE * const f_db,
-                    const DbHeader * const db_header,
-                    Pgno pgno)
-   : BtreePage(f_db, db_header, pgno)
+  TableInteriorPage(Pgno pgno)
+   : BtreePage(pgno)
   {}
 
   public:
@@ -732,21 +620,14 @@ private:
                             // TODO: should treated as cursor
   //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
 
-  FILE *f_db;
-  DbHeader db_header;
-
   public:
-  TableBtree(FILE *f_db)
-    : cur_page(NULL), cur_cell(0), f_db(f_db), db_header(f_db)
+  TableBtree()
+    : cur_page(NULL), cur_cell(0)
   {
-    assert(MYSQLITE_OK == db_header.read());
   }
   public:
   ~TableBtree()
   {}
-
-  private:
-  TableBtree();
 };
 
 

@@ -23,6 +23,7 @@ using namespace std;
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <assert.h>
 
 #include "mysqlite_types.h"
 

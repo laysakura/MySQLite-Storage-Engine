@@ -173,10 +173,5 @@ long long sqlite_db(UDF_INIT *initid, UDF_ARGS *args,
   bool is_existing_db = *(bool *)initid->ptr;
   *is_null = 0;
 
-  // Page cache
-  if (is_existing_db) {
-    
-  }
-
   return is_existing_db;
 }
