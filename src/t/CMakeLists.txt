@@ -40,6 +40,7 @@ foreach(target ${mysqlite_utest_targets})
   # Each test specific source
   if(   sqlite_format STREQUAL ${target}
      OR mysqlite_api STREQUAL ${target}
+     OR pcache STREQUAL ${target}
   )
     set(utest_src ${utest_src} ../sqlite_format.cc)
   endif()

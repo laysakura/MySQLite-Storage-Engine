@@ -8,14 +8,14 @@
 Pgsz DbHeader::get_pg_sz()
 {
   PageCache *pcache = PageCache::get_instance();
-  u8 *hdr_data = pcache->fetch(0);
+  u8 *hdr_data = pcache->fetch(SQLITE_MASTER_ROOTPGNO);
   return u8s_to_val<Pgsz>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
 }
 
 Pgsz DbHeader::get_reserved_space()
 {
   PageCache *pcache = PageCache::get_instance();
-  u8 *hdr_data = pcache->fetch(0);
+  u8 *hdr_data = pcache->fetch(SQLITE_MASTER_ROOTPGNO);
   return u8s_to_val<Pgsz>(&hdr_data[DBHDR_RESERVEDSPACE_OFFSET], DBHDR_RESERVEDSPACE_LEN);
 }
 

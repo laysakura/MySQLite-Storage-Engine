@@ -48,33 +48,36 @@
 
 * TODOs in source files
 ** .cc
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.cc:28:    // TODO: how to change page size?
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.cc:30:  return MYSQLITE_OK;  // TODO: page cache should return status
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:215:                                                strlen("global key"))))  // TODO: Per table share
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:630:    abort();    // TODO: More decent way to report SQLite db is not opened.
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:697:  memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:709:          (*field)->store(s, strlen(s), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/udf_sqlite_db.cc:60:  // TODO: BUG: Connection should not be newly created.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:87:  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:88:  // TODO: So redundunt....
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:89:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:108:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:138:  // TODO: use cache for both record and page!!
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:156:  // TODO: Cache... now memory leak
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:224:  assert(MYSQLITE_OK == cur_page.read());  // TODO: Cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:86:  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:87:  // TODO: So redundunt....
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:88:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:104:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:127:  // TODO: use cache for both record and page!!
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:138:  // TODO: Cache... now memory leak
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:199:  assert(MYSQLITE_OK == cur_page.fetch());  // TODO: Cache
 
 ** .h
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.h:59:  mysqlite::Connection conn;   // TODO: Should a Connection be shared with all handlers??
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:127:    abort();  // TODO: support 64bit column int value.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:235:    abort();  // TODO: Opening (creating) new SQLite DB is not yet supported.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:423:    { // TODO: freeblock offset check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:427:    { // TODO: num of cell check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:431:    { // TODO: cell content area offset check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:437:    { // TODO: num of fragmentation check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:730:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:731:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:732:                            // TODO: should treated as cursor
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:733:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:20:                     // TODO: compression
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:103:      // TODO: cache eviction
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:180:    abort();  // TODO: Opening (creating) new SQLite DB is not yet supported.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:315:    { // TODO: freeblock offset check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:319:    { // TODO: num of cell check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:323:    { // TODO: cell content area offset check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:329:    { // TODO: num of fragmentation check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:618:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:619:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:620:                            // TODO: should treated as cursor
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:621:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:24:                     // TODO: compression
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:52:    the_cache = new u8[pcache_sz + pcache_idx_sz()]; // TODO: more sophisticated mem allocation
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:94:      // TODO: cache eviction
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_types.h:88:    abort();  // TODO: support 64bit column int value.
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:51:  const char *get_text(int colno) const;  // TODO: how to prevent memory leak? Self mem mngmt?
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:62:** TODO: Move this class to other file so that user cannot see it.
 

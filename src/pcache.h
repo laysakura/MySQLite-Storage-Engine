@@ -6,6 +6,9 @@
 #include "utils.h"
 
 
+#define PCACHE_MIN_SZ PAGE_MAX_SZ
+
+
 /**
  * PageCache
  *
@@ -48,6 +51,7 @@ private:
    */
   public:
   void alloc(u64 pcache_sz) {
+    assert(PCACHE_MIN_SZ <= pcache_sz);
     this->pcache_sz = pcache_sz;
     the_cache = new u8[pcache_sz + pcache_idx_sz()]; // TODO: more sophisticated mem allocation
                                                      // (see InnoDB's ut_malloc())
