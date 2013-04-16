@@ -9,7 +9,10 @@ errstat PageCache::refresh(const char * const db_path)
 {
   errstat res;
 
-  if (f_db) fclose(f_db);
+  if (f_db) {
+    fclose(f_db);
+    f_db = NULL;
+  }
   f_db = open_sqlite_db(db_path, &res);
 
   if (res == MYSQLITE_OK) {

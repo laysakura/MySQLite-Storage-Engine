@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 
+using namespace std;
+#include <string>
+
 #include "../mysqlite_api.h"
+#include "../sqlite_format.h"
 #include "../mysqlite_config.h"
 
 

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "../mysqlite_api.h"
 #include "../sqlite_format.h"
 #include "../mysqlite_config.h"
 
@@ -22,19 +23,17 @@ public:
 
 TEST(BtreePage, BtreePageValidityCheck_success)
 {
-  errstat res;
-  FILE *f_db = open_sqlite_db(MYSQLITE_TEST_DB_DIR "/BtreePage-empty-table.sqlite", &res);
-  ASSERT_TRUE(f_db);
+  using namespace mysqlite;
+
+  Connection conn;
+  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TBtreePage btree_page(f_db, &db_header, 2);
-  ASSERT_EQ(MYSQLITE_OK, btree_page.read());
+  TBtreePage btree_page(2);
+  ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_TRUE(btree_page.is_valid_hdr());
 
-  fclose(f_db);
+  conn.close();
 }
 TEST(BtreePage, BtreePageValidityCheck_page1)
 {
@@ -43,11 +42,8 @@ TEST(BtreePage, BtreePageValidityCheck_page1)
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TBtreePage btree_page(f_db, &db_header, 1);
-  ASSERT_EQ(MYSQLITE_OK, btree_page.read());
+  TBtreePage btree_page(1);
+  ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_TRUE(btree_page.is_valid_hdr());
 
   fclose(f_db);
@@ -60,12 +56,8 @@ TEST(BtreePage, get_ith_cell_offset_EmptyTable)
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TBtreePage btree_page(f_db, &db_header, 2);
-  ASSERT_EQ(MYSQLITE_OK, btree_page.read());
-
+  TBtreePage btree_page(2);
+  ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_EQ(0, btree_page.get_ith_cell_offset(0));
 
   fclose(f_db);
@@ -77,19 +69,15 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TBtreePage btree_page(f_db, &db_header, 2);
-  ASSERT_EQ(MYSQLITE_OK, btree_page.read());
-
+  TBtreePage btree_page(2);
+  ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   {
     ASSERT_GT(btree_page.get_ith_cell_offset(0), 0);
-    ASSERT_LT(btree_page.get_ith_cell_offset(0), db_header.get_pg_sz());
+    ASSERT_LT(btree_page.get_ith_cell_offset(0), DbHeader::get_pg_sz());
   }
   {
     ASSERT_GT(btree_page.get_ith_cell_offset(1), 0);
-    ASSERT_LT(btree_page.get_ith_cell_offset(1), db_header.get_pg_sz());
+    ASSERT_LT(btree_page.get_ith_cell_offset(1), DbHeader::get_pg_sz());
   }
   {
     ASSERT_EQ(btree_page.get_ith_cell_offset(2), 0);
@@ -109,12 +97,7 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TableLeafPage tbl_leaf_page(f_db, &db_header, 2);
-  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
-
+  TableLeafPage tbl_leaf_page(2);
   {
     for (u64 row = 0; row < 2; ++row) {
       RecordCell cell;
@@ -151,12 +134,7 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TableLeafPage tbl_leaf_page(f_db, &db_header, 1); // sqlite_master
-  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
-
+  TableLeafPage tbl_leaf_page(1); // sqlite_master
   {
     for (u64 row = 0; row < 2; ++row) {
       RecordCell cell;
@@ -183,12 +161,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TableLeafPage tbl_leaf_page(f_db, &db_header, 2);
-  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
-
+  TableLeafPage tbl_leaf_page(2);
   {
     RecordCell cell;
 
@@ -217,12 +190,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
   ASSERT_TRUE(f_db);
   ASSERT_EQ(res, MYSQLITE_OK);
 
-  DbHeader db_header(f_db);
-  ASSERT_EQ(MYSQLITE_OK, db_header.read());
-
-  TableLeafPage tbl_leaf_page(f_db, &db_header, 2);
-  ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.read());
-
+  TableLeafPage tbl_leaf_page(2);
   {
     RecordCell cell;
 

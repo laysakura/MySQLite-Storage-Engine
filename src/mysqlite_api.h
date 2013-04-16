@@ -2,6 +2,7 @@
 #define _MYSQLITE_API_H_
 
 
+#include "mysqlite_types.h"
 #include "sqlite_format.h"
 
 namespace mysqlite {

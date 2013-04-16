@@ -5,14 +5,14 @@
 #include "../mysqlite_config.h"
 
 
-class PcacheEnvironment : public ::testing::Environment {
-public:
-  void TearDown() {
-    PageCache *pcache = PageCache::get_instance();
-    pcache->free();  // Page cache must be freed only once in a process.
-  }
-};
-::testing::Environment* const pc_env = ::testing::AddGlobalTestEnvironment(new PcacheEnvironment);
+/* class PcacheEnvironment : public ::testing::Environment { */
+/* public: */
+/*   void TearDown() { */
+/*     PageCache *pcache = PageCache::get_instance(); */
+/*     pcache->free();  // Page cache must be freed only once in a process. */
+/*   } */
+/* }; */
+/* ::testing::Environment* const pc_env = ::testing::AddGlobalTestEnvironment(new PcacheEnvironment); */
 
 
 TEST(pcache, correct_DBHeader)
@@ -26,6 +26,8 @@ TEST(pcache, correct_DBHeader)
 
   ASSERT_STREQ(SQLITE3_SIGNATURE, (char *)pcache->fetch(1));
   ASSERT_EQ(DbHeader::get_pg_sz(), 1024);
+
+  pcache->free();
 }
 
 TEST(pcache, SmallerPageCacheThanDbFile)
@@ -38,4 +40,6 @@ TEST(pcache, SmallerPageCacheThanDbFile)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   ASSERT_STREQ(SQLITE3_SIGNATURE, (char *)pcache->fetch(1));
+
+  pcache->free();
 }

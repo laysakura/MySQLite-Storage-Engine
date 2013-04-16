@@ -65,19 +65,19 @@
 
 ** .h
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.h:59:  mysqlite::Connection conn;   // TODO: Should a Connection be shared with all handlers??
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:180:    abort();  // TODO: Opening (creating) new SQLite DB is not yet supported.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:315:    { // TODO: freeblock offset check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:319:    { // TODO: num of cell check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:323:    { // TODO: cell content area offset check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:329:    { // TODO: num of fragmentation check
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:618:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:619:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:620:                            // TODO: should treated as cursor
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:621:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:24:                     // TODO: compression
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:52:    the_cache = new u8[pcache_sz + pcache_idx_sz()]; // TODO: more sophisticated mem allocation
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:94:      // TODO: cache eviction
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_types.h:88:    abort();  // TODO: support 64bit column int value.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:129:    abort();  // TODO: Opening (creating) new SQLite DB is not yet supported.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:264:    { // TODO: freeblock offset check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:268:    { // TODO: num of cell check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:272:    { // TODO: cell content area offset check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:278:    { // TODO: num of fragmentation check
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:567:  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:568:  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:569:                            // TODO: should treated as cursor
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:570:  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:27:                     // TODO: compression
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:56:    the_cache = new u8[pcache_sz + pcache_idx_sz()]; // TODO: more sophisticated mem allocation
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:98:      // TODO: cache eviction
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_types.h:141:    abort();  // TODO: support 64bit column int value.
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:51:  const char *get_text(int colno) const;  // TODO: how to prevent memory leak? Self mem mngmt?
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:62:** TODO: Move this class to other file so that user cannot see it.
 

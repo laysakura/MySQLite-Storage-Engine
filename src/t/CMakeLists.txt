@@ -21,8 +21,7 @@ set(GTEST_LDADD ${GTEST_SRC}/src/gtest_main.o ${GTEST_SRC}/src/gtest-all.o -lpth
 ################################################################################
 # Unit test executables
 ################################################################################
-#set(mysqlite_utest_targets utils pcache sqlite_format mysqlite_api)
-set(mysqlite_utest_targets pcache)
+set(mysqlite_utest_targets utils pcache sqlite_format mysqlite_api)
 
 
 ################################################################################
@@ -38,11 +37,21 @@ foreach(target ${mysqlite_utest_targets})
   endif()
 
   # Each test specific source
-  if(   sqlite_format STREQUAL ${target}
+  if(sqlite_format STREQUAL ${target}
      OR mysqlite_api STREQUAL ${target}
      OR pcache STREQUAL ${target}
   )
     set(utest_src ${utest_src} ../sqlite_format.cc)
+  endif()
+  if(mysqlite_api STREQUAL ${target}
+     OR sqlite_format STREQUAL ${target}
+     OR pcache STREQUAL ${target}
+  )
+    set(utest_src ${utest_src} ../pcache.cc)
+  endif()
+  if(sqlite_format STREQUAL ${target}
+  )
+    set(utest_src ${utest_src} ../mysqlite_api.cc)
   endif()
 
   add_executable(${target}Test ${utest_src})

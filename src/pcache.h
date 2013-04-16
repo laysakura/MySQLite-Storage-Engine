@@ -65,7 +65,10 @@ private:
    */
   public:
   void free() {
-    if (f_db) fclose(f_db);
+    if (f_db) {
+      fclose(f_db);
+      f_db = NULL;
+    }
     delete the_cache;
   }
 
