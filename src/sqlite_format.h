@@ -255,7 +255,7 @@ private:
     : f_db(f_db)
   {
     assert(f_db);
-    assert(hdr_data = (u8 *)malloc(DB_HEADER_SZ));
+    hdr_data = (u8 *)malloc(DB_HEADER_SZ);
   }
   public:
   ~DbHeader() {
@@ -306,7 +306,7 @@ public:
   {
     assert(f_db);
     assert(db_header);
-    assert(pg_data = (u8 *)malloc(db_header->get_pg_sz()));
+    pg_data = (u8 *)malloc(db_header->get_pg_sz());
   }
   public:
   virtual ~Page() {
@@ -648,7 +648,7 @@ class TableLeafPage : public BtreePage {
 
     for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
       Page ovpg(f_db, db_header, overflow_pgno);
-      assert(MYSQLITE_OK == ovpg.read());
+      MYSQLITE_OK == ovpg.read();
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
       Pgsz payload_sz_inpg = min<u64>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
@@ -725,7 +725,7 @@ private:
   TableBtree(FILE *f_db)
     : cur_page(NULL), cur_cell(0), f_db(f_db), db_header(f_db)
   {
-    assert(MYSQLITE_OK == db_header.read());
+    MYSQLITE_OK == db_header.read();
   }
   public:
   ~TableBtree()

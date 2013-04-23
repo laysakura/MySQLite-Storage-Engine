@@ -88,16 +88,16 @@ mysqlite_type RowCursor::get_type(int colno) const
   // TODO: So redundunt....
   // TODO: use cache for both record and page!!
   DbHeader db_header(f_db);
-  assert(MYSQLITE_OK == db_header.read());
+  MYSQLITE_OK == db_header.read();
 
   TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
-  assert(MYSQLITE_OK == tbl_leaf_page.read());
+  MYSQLITE_OK == tbl_leaf_page.read();
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
-    assert(tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data));
+    tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
   }
 
   return sqlite_type_to_mysqlite_type(cell.payload.cols_type[colno]);
@@ -114,13 +114,13 @@ int RowCursor::get_int(int colno) const
   }
 
   TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
-  assert(MYSQLITE_OK == tbl_leaf_page.read());
+  MYSQLITE_OK == tbl_leaf_page.read();
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
-    assert(tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data));
+    tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
   }
   if (cell.payload.cols_type[colno] == ST_C0) {
     return 0;
@@ -144,13 +144,13 @@ const char *RowCursor::get_text(int colno) const
   }
 
   TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
-  assert(MYSQLITE_OK == tbl_leaf_page.read());
+  MYSQLITE_OK == tbl_leaf_page.read();
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
-    assert(tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data));
+    tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
   }
 
   // TODO: Cache... now memory leak
@@ -221,7 +221,7 @@ bool FullscanCursor::next()
   }
 
   BtreePage cur_page(f_db, &db_header, visit_path.back().pgno);
-  assert(MYSQLITE_OK == cur_page.read());  // TODO: Cache
+  MYSQLITE_OK == cur_page.read();  // TODO: Cache
 
   if (TABLE_LEAF == cur_page.get_btree_type()) {
     // (1) At leaf node,
