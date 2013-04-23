@@ -71,7 +71,7 @@
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.h:278:    { // TODO: num of fragmentation check
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:27:                     // TODO: compression
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:56:    the_cache = new u8[pcache_sz + pcache_idx_sz()]; // TODO: more sophisticated mem allocation
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:101:      // TODO: cache eviction
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.h:103:      // TODO: cache eviction
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_types.h:141:    abort();  // TODO: support 64bit column int value.
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:52:  const char *get_text(int colno) const;  // TODO: how to prevent memory leak? Self mem mngmt?
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.h:63:** TODO: Move this class to other file so that user cannot see it.
