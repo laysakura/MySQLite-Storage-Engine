@@ -78,7 +78,9 @@ private:
    * Therefore, len(pcache_idx) >= n_pg always suffices.
    */
   private:
-  u64 pcache_idx_sz() const;
+  u64 pcache_idx_sz() const {
+    return sizeof(Pgno) * ((pcache_sz / PAGE_MIN_SZ) + 1);
+  }
 
   /**
    * Fetch page

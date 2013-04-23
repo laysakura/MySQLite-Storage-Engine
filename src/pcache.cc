@@ -45,8 +45,3 @@ errstat PageCache::refresh(const char * const db_path)
 
   return res;
 }
-
-inline u64 PageCache::pcache_idx_sz() const
-{
-  return sizeof(Pgno) * ((pcache_sz / PAGE_MIN_SZ) + 1);
-}
