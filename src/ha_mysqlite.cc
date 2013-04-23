@@ -95,6 +95,7 @@
 #include <mysql/plugin.h>
 
 #include "ha_mysqlite.h"
+#include "pcache.h"
 #include "utils.h"
 #include "probes_mysql.h"
 #include "mysqlite_api.h"
@@ -172,7 +173,7 @@ static int mysqlite_init_func(void *p)
   mysqlite_hton->is_supported_system_table= mysqlite_is_supported_system_table;
 
   // Page cache
-  PageCache *pcache = PageCache.get_instance();
+  PageCache *pcache = PageCache::get_instance();
   pcache->alloc(MYSQLITE_PCACHE_SZ);
 
   DBUG_RETURN(0);
@@ -184,7 +185,7 @@ static int mysqlite_done_func(void *p)
   mysql_mutex_destroy(&mysqlite_mutex);
 
   // Page cache
-  PageCache *pcache = PageCache.get_instance();
+  PageCache *pcache = PageCache::get_instance();
   pcache->free();
 
   return 0;

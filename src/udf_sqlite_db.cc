@@ -136,6 +136,7 @@ my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
     return 1;
   }
   errstat res = share->conn.open(path);
+log(("conn.open() res = %d\n", res));
   if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
     // Newly create SQLite database file
     *is_existing_db = false;

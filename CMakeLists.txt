@@ -34,7 +34,7 @@ configure_file(
 ################################################################################
 # Compile and link
 ################################################################################
-set(mysqlite_sources src/ha_mysqlite.cc src/udf_sqlite_db.cc src/mysqlite_api.cc)
+set(mysqlite_sources src/ha_mysqlite.cc src/udf_sqlite_db.cc src/sqlite_format.cc src/pcache.cc src/mysqlite_api.cc)
 include_directories(${cmake_source_dir}/storage/mysqlite/src)
 mysql_add_plugin(mysqlite ${mysqlite_sources} STORAGE_ENGINE MODULE_ONLY MODULE_OUTPUT_NAME "libmysqlite_engine")
 
