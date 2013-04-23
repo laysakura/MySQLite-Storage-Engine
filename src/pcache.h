@@ -102,7 +102,8 @@ private:
       // Page#pgno should be read(2) from DB file
       // TODO: cache eviction
       assert(f_db);
-      assert(MYSQLITE_OK == mysqlite_fread(&the_cache[pcno * pgsz], (pgno - 1) * pgsz, pgsz, f_db));
+      errstat res = mysqlite_fread(&the_cache[pcno * pgsz], (pgno - 1) * pgsz, pgsz, f_db);
+      assert(res == MYSQLITE_OK);
       return &the_cache[pcno * pgsz];
     }
   }

@@ -501,7 +501,8 @@ class TableLeafPage : public BtreePage {
 
     for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
       Page ovpg(overflow_pgno);
-      assert(MYSQLITE_OK == ovpg.fetch());
+      errstat res = ovpg.fetch();
+      assert(res == MYSQLITE_OK);
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
       Pgsz payload_sz_inpg = min<u64>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
