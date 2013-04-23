@@ -50,10 +50,10 @@
 ** .cc
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/pcache.cc:31:    // TODO: how to change page size?
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/sqlite_format.cc:30:  return MYSQLITE_OK;  // TODO: page cache should return status
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:215:                                                strlen("global key"))))  // TODO: Per table share
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:630:    abort();    // TODO: More decent way to report SQLite db is not opened.
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:697:  memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
-- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:709:          (*field)->store(s, strlen(s), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:216:                                                strlen("global key"))))  // TODO: Per table share
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:631:    abort();    // TODO: More decent way to report SQLite db is not opened.
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:698:  memset(buf, 0, table->s->null_bytes);  // TODO: Support NULL column
+- /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/ha_mysqlite.cc:710:          (*field)->store(s, strlen(s), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/udf_sqlite_db.cc:60:  // TODO: BUG: Connection should not be newly created.
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:84:  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
 - /home/nakatani/git/mysql-5.6.10/storage/mysqlite/src/mysqlite_api.cc:85:  // TODO: So redundunt....
