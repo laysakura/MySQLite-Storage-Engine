@@ -83,7 +83,7 @@ mysqlite_type RowCursor::get_type(int colno) const
 {
   // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
   // TODO: So redundunt....
-  // TODO: use cache for both record and page!!
+  // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   assert(MYSQLITE_OK == tbl_leaf_page.fetch());
 
@@ -99,7 +99,7 @@ mysqlite_type RowCursor::get_type(int colno) const
 
 int RowCursor::get_int(int colno) const
 {
-  // TODO: use cache for both record and page!!
+  // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   assert(MYSQLITE_OK == tbl_leaf_page.fetch());
 
@@ -122,7 +122,7 @@ int RowCursor::get_int(int colno) const
 }
 const char *RowCursor::get_text(int colno) const
 {
-  // TODO: use cache for both record and page!!
+  // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   assert(MYSQLITE_OK == tbl_leaf_page.fetch());
 
@@ -135,7 +135,7 @@ const char *RowCursor::get_text(int colno) const
 
   // TODO: Cache... now memory leak
   string *ret = new string((char *)&cell.payload.data[cell.payload.cols_offset[colno]],
-                          cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい
+                           cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい
   return ret->c_str();
 }
 
@@ -194,7 +194,7 @@ void FullscanCursor::close()
 bool FullscanCursor::next()
 {
   BtreePage cur_page(visit_path.back().pgno);
-  assert(MYSQLITE_OK == cur_page.fetch());  // TODO: Cache
+  assert(MYSQLITE_OK == cur_page.fetch());
 
   if (TABLE_LEAF == cur_page.get_btree_type()) {
     // (1) At leaf node,

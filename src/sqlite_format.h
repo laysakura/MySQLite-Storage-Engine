@@ -562,22 +562,4 @@ class TableInteriorPage : public BtreePage {
 };
 
 
-class TableBtree {
-private:
-  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
-  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
-                            // TODO: should treated as cursor
-  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
-
-  public:
-  TableBtree()
-    : cur_page(NULL), cur_cell(0)
-  {
-  }
-  public:
-  ~TableBtree()
-  {}
-};
-
-
 #endif /* _SQLITE_FORMAT_H_ */
