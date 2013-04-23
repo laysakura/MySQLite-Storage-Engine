@@ -12,7 +12,7 @@ use Cwd 'realpath';
 my $testdir = realpath(dirname(__FILE__));
 
 my $dbh = DBI->connect(
-    $ENV{DBI} || 'dbi:mysql:database=test;host=localhost',
+    $ENV{DBI} || "dbi:mysql:test;mysql_read_default_file=$ENV{HOME}/.my.cnf",
     $ENV{DBI_USER} || 'root',
     $ENV{DBI_PASSWORD} || '',
 ) or die 'connection failed:';

@@ -169,7 +169,7 @@ public:
   */
   public:
   Page(Pgno pgno)
-    : pgno(pgno)
+    : pg_data(NULL), pgno(pgno)
   {}
   public:
   virtual ~Page() {}
