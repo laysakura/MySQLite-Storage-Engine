@@ -2,6 +2,7 @@
 #define _MYSQLITE_API_H_
 
 
+#include "mysqlite_types.h"
 #include "sqlite_format.h"
 
 namespace mysqlite {
@@ -54,7 +55,7 @@ protected:
   virtual ~RowCursor() {}
 
   protected:
-  RowCursor(FILE *f_db, Pgno root_pgno);
+  RowCursor(Pgno root_pgno);
 
 };
 
@@ -71,7 +72,7 @@ class FullscanCursor : public RowCursor {
   **   Used to open B-tree pages.
   */
   public:
-  FullscanCursor(FILE *f_db, Pgno root_pgno);
+  FullscanCursor(Pgno root_pgno);
 
   public:
   void close();
@@ -91,11 +92,8 @@ class FullscanCursor : public RowCursor {
 ** Open a connection to a database
 */
 class Connection {
-private:
-  FILE *f_db;
-
   public:
-  Connection() : f_db(NULL) {}
+  Connection() {}
 
   /*
   ** Open a connection to a db
@@ -125,10 +123,6 @@ private:
   RowCursor *table_fullscan(Pgno tbl_root);
 };
 
-
-/***********************************************************************
-** Functions
-***********************************************************************/
 
 }
 

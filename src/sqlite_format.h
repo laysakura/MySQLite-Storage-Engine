@@ -24,113 +24,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <sql_plugin.h>
+
 #include "mysqlite_types.h"
 #include "utils.h"
 
-
-/*
-** Constants
-*/
-#define SQLITE3_SIGNATURE_SZ 16
-#define SQLITE3_SIGNATURE "SQLite format 3"
-
-#define DB_HEADER_SZ 100
-
-#define DBHDR_PGSZ_OFFSET 16
-#define DBHDR_PGSZ_LEN 2
-
-#define DBHDR_RESERVEDSPACE_OFFSET 20
-#define DBHDR_RESERVEDSPACE_LEN 1
-
-#define BTREEHDR_SZ_LEAF 8
-#define BTREEHDR_SZ_INTERIOR 12
-
-#define BTREEHDR_BTREETYPE_OFFSET 0
-
-#define BTREEHDR_FREEBLOCKOFST_OFFSET 1
-#define BTREEHDR_FREEBLOCKOFST_LEN 2
-
-#define BTREEHDR_NCELL_OFFSET 3
-#define BTREEHDR_NCELL_LEN 2
-
-#define BTREEHDR_CELLCONTENTAREAOFST_OFFSET 5
-#define BTREEHDR_CELLCONTENTAREAOFST_LEN 2
-
-#define BTREEHDR_NFRAGMENTATION_OFFSET 7
-
-#define BTREEHDR_RIGHTMOSTPG_OFFSET 8
-#define BTREEHDR_RIGHTMOSTPG_LEN 4
-
-#define BTREECELL_LECTCHILD_LEN 4
-#define BTREECELL_OVERFLOWPGNO_LEN 4
-
-#define CPA_ELEM_LEN 2
-
-#define SQLITE_MASTER_ROOTPGNO 1
-
-#define SQLITE_MASTER_COLNO_TYPE     0
-#define SQLITE_MASTER_COLNO_NAME     1
-#define SQLITE_MASTER_COLNO_TBL_NAME 2
-#define SQLITE_MASTER_COLNO_ROOTPAGE 3
-#define SQLITE_MASTER_COLNO_SQL      4
-
-#define SQLITE3_VARINT_MAXLEN 9
-
-
-/*
-  SQLite internal types
-*/
-typedef u32 Pgno;
-typedef u16 Pgsz;
-typedef u64 Rowid;
-
-typedef enum btree_page_type {
-  INDEX_INTERIOR     = 2,
-  TABLE_INTERIOR     = 5,
-  INDEX_LEAF         = 10,
-  TABLE_LEAF         = 13,
-} btree_page_type;
-
-typedef enum sqlite_type {
-  ST_NULL =  0,
-  ST_INT8 =  1,
-  ST_INT16 = 2,
-  ST_INT24 = 3,
-  ST_INT32 = 4,
-  ST_INT48 = 5,
-  ST_INT64 = 6,
-  ST_FLOAT = 7,
-  ST_C0 =    8,
-  ST_C1 =    9,
-  ST_BLOB,   /* >= 12, even */
-  ST_TEXT,   /* >= 13, odd  */
-} sqlite_type;
-
-static inline mysqlite_type sqlite_type_to_mysqlite_type(sqlite_type st)
-{
-  switch (st) {
-  case ST_NULL:
-    return MYSQLITE_NULL;
-  case ST_C0:
-  case ST_C1:
-  case ST_INT8:
-  case ST_INT16:
-  case ST_INT24:
-  case ST_INT32:
-    return MYSQLITE_INTEGER;
-  case ST_INT48:
-  case ST_INT64:
-    abort();  // TODO: support 64bit column int value.
-  case ST_FLOAT:
-    return MYSQLITE_FLOAT;
-  case ST_BLOB:
-    return MYSQLITE_BLOB;
-  case ST_TEXT:
-    return MYSQLITE_TEXT;
-  }
-  // Just for avoiding warning
-  return MYSQLITE_NULL;
-}
 
 struct BtreePathNode {
   Pgno pgno;
@@ -238,91 +136,50 @@ static inline FILE *open_sqlite_db(const char * const existing_path,
 
 
 /*
-** Database header
+** Database header functions.
+**
+** Real data is always on page cache(0).
 */
 class DbHeader {
+  public:
+  static Pgsz get_pg_sz();
+
+  public:
+  static Pgsz get_reserved_space();
+
 private:
-  FILE * const f_db;
-  u8 *hdr_data;
-
-  /*
-  ** @note
-  ** Constructor does not read(2) page contents.
-  ** Call this->read() after object is constructed.
-  */
-  public:
-  DbHeader(FILE * const f_db)
-    : f_db(f_db)
-  {
-    assert(f_db);
-    hdr_data = (u8 *)malloc(DB_HEADER_SZ);
-  }
-  public:
-  ~DbHeader() {
-    free(hdr_data);
-  }
-
-  public:
-  errstat read() const {
-    return mysqlite_fread(hdr_data, 0, DB_HEADER_SZ, f_db);
-  }
-
-  public:
-  Pgsz get_pg_sz() const {
-    return u8s_to_val<Pgsz>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
-  }
-
-  public:
-  Pgsz get_reserved_space() const {
-    return u8s_to_val<Pgsz>(&hdr_data[DBHDR_RESERVEDSPACE_OFFSET], DBHDR_RESERVEDSPACE_LEN);
-  }
-
-  // Prohibit default constructor
-  private:
-  DbHeader() : f_db(NULL) {}
+  // Prohibit any way to create instance
+  DbHeader();
+  DbHeader(const DbHeader&);
+  DbHeader& operator=(const DbHeader&);
 };
 
 /*
 ** Page class
 */
 class Page {
-protected:
-  FILE * const f_db;
 public:
   u8 *pg_data;
-  const DbHeader * const db_header;
   Pgno pgno;
 
   /*
   ** @note
   ** Constructor does not read(2) page contents.
-  ** Call this->read() after object is constructed.
+  ** Call this->fetch() after object is constructed.
   */
   public:
-  Page(FILE * const f_db,
-       const DbHeader * const db_header,
-       Pgno pgno)
-    : f_db(f_db), db_header(db_header), pgno(pgno)
-  {
-    assert(f_db);
-    assert(db_header);
-    pg_data = (u8 *)malloc(db_header->get_pg_sz());
-  }
+  Page(Pgno pgno)
+    : pg_data(NULL), pgno(pgno)
+  {}
   public:
-  virtual ~Page() {
-    free(pg_data);
-  }
+  virtual ~Page() {}
 
   public:
-  errstat read() const {
-    assert(db_header);
-    Pgsz pg_sz = db_header->get_pg_sz();
-    return mysqlite_fread(pg_data, pg_sz * (pgno - 1), pg_sz, f_db);
-  }
+  errstat fetch();
 
   // Prohibit default constructor
-  private:
-  Page() : f_db(NULL), db_header(NULL) {}
+ private:
+  Page();
 };
 
 /*
@@ -330,10 +187,8 @@ public:
 */
 class BtreePage : public Page {
   public:
-  BtreePage(FILE * const f_db,
-            const DbHeader * const db_header,
-            Pgno pgno)
-    : Page(f_db, db_header, pgno)
+  BtreePage(Pgno pgno)
+    : Page(pgno)
   {}
 
   // Btree header info
@@ -475,8 +330,8 @@ class BtreePage : public Page {
 
   // Page management
   public:
-  errstat read() const {
-    errstat res = Page::read();
+  errstat fetch() {
+    errstat res = Page::fetch();
     if (res != MYSQLITE_OK) return res;
     if (!is_valid_hdr()) return MYSQLITE_CORRUPT_DB;
     return MYSQLITE_OK;
@@ -559,10 +414,8 @@ struct RecordCell {
 
 class TableLeafPage : public BtreePage {
   public:
-  TableLeafPage(FILE * const f_db,
-                const DbHeader * const db_header,
-                Pgno pgno)
-   : BtreePage(f_db, db_header, pgno)
+  TableLeafPage(Pgno pgno)
+   : BtreePage(pgno)
   {}
 
   /*
@@ -594,7 +447,7 @@ class TableLeafPage : public BtreePage {
 
     // Overflow page treatment
     // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
-    Pgsz usable_sz = db_header->get_pg_sz() - db_header->get_reserved_space();
+    Pgsz usable_sz = DbHeader::get_pg_sz() - DbHeader::get_reserved_space();
     Pgsz max_local = usable_sz - 35;
     if (cell->payload_sz <= max_local) {
       // no overflow page
@@ -643,12 +496,13 @@ class TableLeafPage : public BtreePage {
     u64 offset = 0;
     memcpy(&buf_overflown_payload[offset], cell->payload.data, cell->payload_sz_in_origpg);
     offset += cell->payload_sz_in_origpg;
-    Pgsz usable_sz = db_header->get_pg_sz() - db_header->get_reserved_space();
+    Pgsz usable_sz = DbHeader::get_pg_sz() - DbHeader::get_reserved_space();
     u64 payload_sz_rem = cell->payload_sz - cell->payload_sz_in_origpg;
 
     for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
-      Page ovpg(f_db, db_header, overflow_pgno);
-      MYSQLITE_OK == ovpg.read();
+      Page ovpg(overflow_pgno);
+      errstat res = ovpg.fetch();
+      assert(res == MYSQLITE_OK);
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
       Pgsz payload_sz_inpg = min<u64>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
@@ -690,10 +544,8 @@ struct TableInteriorPageCell {
 
 class TableInteriorPage : public BtreePage {
   public:
-  TableInteriorPage(FILE * const f_db,
-                    const DbHeader * const db_header,
-                    Pgno pgno)
-   : BtreePage(f_db, db_header, pgno)
+  TableInteriorPage(Pgno pgno)
+   : BtreePage(pgno)
   {}
 
   public:
@@ -708,31 +560,6 @@ class TableInteriorPage : public BtreePage {
 
     cell->rowid = get_rowid(offset, &len);
   }
-};
-
-
-class TableBtree {
-private:
-  TableLeafPage *cur_page;  // TODO: Might conflict to page cache
-  Pgsz cur_cell;            // TODO: cur_page(pgno, materialized by page cache) and cur_cell
-                            // TODO: should treated as cursor
-  //[IMPORTANT] TODO: Use cur_page and cur_cell as a cache (it has tremendous effects)
-
-  FILE *f_db;
-  DbHeader db_header;
-
-  public:
-  TableBtree(FILE *f_db)
-    : cur_page(NULL), cur_cell(0), f_db(f_db), db_header(f_db)
-  {
-    MYSQLITE_OK == db_header.read();
-  }
-  public:
-  ~TableBtree()
-  {}
-
-  private:
-  TableBtree();
 };
 
 

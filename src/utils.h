@@ -22,7 +22,9 @@ using namespace std;
 #include <vector>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <time.h>
+#include <assert.h>
 
 #include "mysqlite_types.h"
 
@@ -130,17 +132,8 @@ T u8s_to_val(const u8 * const p_sequence, u8 len_sequence) {
 
 
 static inline errstat mysqlite_fread(void *ptr, long offset, size_t nbyte, FILE * const f) {
-  long prev_offset = ftell(f);
-  if (fseek(f, offset, SEEK_SET) == -1) {
-    perror("fseek() failed\n");
-    return MYSQLITE_IO_ERR;
-  }
-  if (nbyte != fread(ptr, 1, nbyte, f)) {
-    perror("fread() fails\n");
-    return MYSQLITE_IO_ERR;
-  }
-  if (fseek(f, prev_offset, SEEK_SET) == -1) {
-    perror("fseek() failed\n");
+  if ((ssize_t)nbyte != pread(fileno(f), ptr, nbyte, offset)) {
+    perror("pread() fails\n");
     return MYSQLITE_IO_ERR;
   }
   return MYSQLITE_OK;

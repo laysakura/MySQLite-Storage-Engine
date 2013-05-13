@@ -1,7 +1,29 @@
 #include <gtest/gtest.h>
 
+using namespace std;
+#include <string>
+
 #include "../mysqlite_api.h"
+#include "../sqlite_format.h"
+#include "../pcache.h"
 #include "../mysqlite_config.h"
+
+
+/**
+ * Materialize page cache
+ */
+class mysqlite_apiEnvironment : public ::testing::Environment {
+public:
+  void SetUp() {
+    PageCache *pcache = PageCache::get_instance();
+    pcache->alloc(1024 * 100);
+  }
+  void TearDown() {
+    PageCache *pcache = PageCache::get_instance();
+    pcache->free();
+  }
+};
+::testing::Environment* const ma_env = ::testing::AddGlobalTestEnvironment(new mysqlite_apiEnvironment);
 
 
 TEST(TypicalUsage, SmallData)

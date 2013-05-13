@@ -21,17 +21,37 @@ set(GTEST_LDADD ${GTEST_SRC}/src/gtest_main.o ${GTEST_SRC}/src/gtest-all.o -lpth
 ################################################################################
 # Unit test executables
 ################################################################################
-set(mysqlite_utest_targets utils sqlite_format mysqlite_api)
+set(mysqlite_utest_targets utils pcache sqlite_format mysqlite_api)
 
 
 ################################################################################
 # Compile and link
 ################################################################################
+include_directories(../../../../sql ../../../../include)
+
 foreach(target ${mysqlite_utest_targets})
-  if(EXISTS ../${target}.cc)
-    set(utest_src ${target}Test.cc ../${target}.cc)
-  else()
-    set(utest_src ${target}Test.cc)
+  # Add sources necessary to compile each test
+  set(utest_src ${target}Test.cc)
+  if(EXISTS ${CMAKE_SOURCE_DIR}/../${target}.cc)
+    set(utest_src ${utest_src} ${CMAKE_SOURCE_DIR}/../${target}.cc)
+  endif()
+
+  # Each test specific source
+  if(sqlite_format STREQUAL ${target}
+     OR mysqlite_api STREQUAL ${target}
+     OR pcache STREQUAL ${target}
+  )
+    set(utest_src ${utest_src} ../sqlite_format.cc)
+  endif()
+  if(mysqlite_api STREQUAL ${target}
+     OR sqlite_format STREQUAL ${target}
+     OR pcache STREQUAL ${target}
+  )
+    set(utest_src ${utest_src} ../pcache.cc)
+  endif()
+  if(sqlite_format STREQUAL ${target}
+  )
+    set(utest_src ${utest_src} ../mysqlite_api.cc)
   endif()
 
   add_executable(${target}Test ${utest_src})

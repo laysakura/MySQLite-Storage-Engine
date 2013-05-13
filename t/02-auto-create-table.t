@@ -12,7 +12,7 @@ use Cwd 'realpath';
 my $testdir = realpath(dirname(__FILE__));
 
 my $dbh = DBI->connect(
-    $ENV{DBI} || 'dbi:mysql:database=test;host=localhost',
+    $ENV{DBI} || "dbi:mysql:test;mysql_read_default_file=$ENV{HOME}/.my.cnf",
     $ENV{DBI_USER} || 'root',
     $ENV{DBI_PASSWORD} || '',
 ) or die 'connection failed:';
@@ -56,14 +56,14 @@ is_deeply(
 
 
 # Tables should be created on current DB
-TODO: {
-    local $TODO = 'BUG: mysql_real_connect hard coding';
+SKIP: {
+    skip 'BUG: mysql_real_connect hard coding', 4;
     ok($dbh->do("drop database if exists test02db_for_mysqlite"));
     ok($dbh->do("create database test02db_for_mysqlite"));
     my $host = $dbh->private_data->{host};
     my $database = $dbh->private_data->{database};
     my $dbh2 = DBI->connect(
-        'dbi:mysql:database=' . $database . ';host=' . $host,
+        'dbi:mysql:database=' . $database ,#. ';host=' . $host,
         $ENV{DBI_USER} || 'root',
         $ENV{DBI_PASSWORD} || '',
     ) or die 'connection failed:';

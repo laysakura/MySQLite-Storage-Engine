@@ -1,6 +1,7 @@
 using namespace std;
 #include <string>
 #include "mysqlite_api.h"
+#include "pcache.h"
 
 
 namespace mysqlite {
@@ -11,24 +12,28 @@ namespace mysqlite {
 errstat Connection::open(const char * const db_path)
 {
   errstat res;
-  f_db = open_sqlite_db(db_path, &res);
+
+  // Page cache
+  PageCache *pcache = PageCache::get_instance();
+  res = pcache->refresh(db_path);
+
   if (res == MYSQLITE_OK || res == MYSQLITE_DB_FILE_NOT_FOUND) {
-    assert(f_db);
-    return res;
+    // succeeded in opening db_path (read-mode or write-mode)
   } else {
+    // failed in opening db_path
     log_errstat(res);
-    return res;
   }
+  return res;
 }
 
 bool Connection::is_opened() const
 {
-  return f_db != NULL;
+  PageCache *pcache = PageCache::get_instance();
+  return pcache->is_ready();
 }
 
 void Connection::close()
 {
-  fclose(f_db);
 }
 
 RowCursor *Connection::table_fullscan(const char * const table)
@@ -62,42 +67,33 @@ RowCursor *Connection::table_fullscan(const char * const table)
 */
 RowCursor *Connection::table_fullscan(Pgno tbl_root)
 {
-  DbHeader db_header(f_db);
-  errstat res;
-  if (MYSQLITE_OK != (res = db_header.read())) {
-    log_errstat(res);
-    return NULL;
-  }
-  return new FullscanCursor(f_db, tbl_root);
+  return new FullscanCursor(tbl_root);
 }
 
 
 /***********************************************************************
 ** RowCursor class
 ***********************************************************************/
-RowCursor::RowCursor(FILE *f_db, Pgno root_pgno)
-  : f_db(f_db),
-    visit_path(1, BtreePathNode(root_pgno, 0)), cpa_idx(-1)
+RowCursor::RowCursor(Pgno root_pgno)
+  : visit_path(1, BtreePathNode(root_pgno, 0)), cpa_idx(-1)
 {
-  assert(f_db);
 }
 
 mysqlite_type RowCursor::get_type(int colno) const
 {
   // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
   // TODO: So redundunt....
-  // TODO: use cache for both record and page!!
-  DbHeader db_header(f_db);
-  MYSQLITE_OK == db_header.read();
-
-  TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
-  MYSQLITE_OK == tbl_leaf_page.read();
+  // TODO: use cache for record!!
+  TableLeafPage tbl_leaf_page(visit_path.back().pgno);
+  errstat ret = tbl_leaf_page.fetch();
+  assert(ret == MYSQLITE_OK);
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
-    tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
+    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
+    assert(ret);
   }
 
   return sqlite_type_to_mysqlite_type(cell.payload.cols_type[colno]);
@@ -105,22 +101,17 @@ mysqlite_type RowCursor::get_type(int colno) const
 
 int RowCursor::get_int(int colno) const
 {
-  // TODO: use cache for both record and page!!
-  DbHeader db_header(f_db);
-  errstat res;
-  if (MYSQLITE_OK != (res = db_header.read())) {
-    log_errstat(res);
-    return 0;
-  }
-
-  TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
-  MYSQLITE_OK == tbl_leaf_page.read();
+  // TODO: use cache for record!!
+  TableLeafPage tbl_leaf_page(visit_path.back().pgno);
+  errstat ret = tbl_leaf_page.fetch();
+  assert(ret == MYSQLITE_OK);
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
-    tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
+    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
+    assert(ret);
   }
   if (cell.payload.cols_type[colno] == ST_C0) {
     return 0;
@@ -135,27 +126,22 @@ int RowCursor::get_int(int colno) const
 }
 const char *RowCursor::get_text(int colno) const
 {
-  // TODO: use cache for both record and page!!
-  DbHeader db_header(f_db);
-  errstat res;
-  if (MYSQLITE_OK != (res = db_header.read())) {
-    log_errstat(res);
-    return 0;
-  }
-
-  TableLeafPage tbl_leaf_page(f_db, &db_header, visit_path.back().pgno);
-  MYSQLITE_OK == tbl_leaf_page.read();
+  // TODO: use cache for record!!
+  TableLeafPage tbl_leaf_page(visit_path.back().pgno);
+  errstat res = tbl_leaf_page.fetch();
+  assert(res == MYSQLITE_OK);
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
-    tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
+    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
+    assert(ret);
   }
 
   // TODO: Cache... now memory leak
   string *ret = new string((char *)&cell.payload.data[cell.payload.cols_offset[colno]],
-                          cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい
+                           cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい
   return ret->c_str();
 }
 
@@ -163,8 +149,8 @@ const char *RowCursor::get_text(int colno) const
 /***********************************************************************
 ** FullscanCursor class
 ***********************************************************************/
-FullscanCursor::FullscanCursor(FILE *f_db, Pgno root_pgno)
-  : RowCursor(f_db, root_pgno)
+FullscanCursor::FullscanCursor(Pgno root_pgno)
+  : RowCursor(root_pgno)
 {
 }
 
@@ -213,15 +199,9 @@ void FullscanCursor::close()
 */
 bool FullscanCursor::next()
 {
-  DbHeader db_header(f_db);
-  errstat res;
-  if (MYSQLITE_OK != (res = db_header.read())) {
-    log_errstat(res);
-    return false;
-  }
-
-  BtreePage cur_page(f_db, &db_header, visit_path.back().pgno);
-  MYSQLITE_OK == cur_page.read();  // TODO: Cache
+  BtreePage cur_page(visit_path.back().pgno);
+  errstat ret = cur_page.fetch();
+  assert(ret == MYSQLITE_OK);
 
   if (TABLE_LEAF == cur_page.get_btree_type()) {
     // (1) At leaf node,

@@ -4,6 +4,12 @@ set(MYSQLITE_VERSION_MINOR 0)
 
 
 ################################################################################
+# Performance tunings  # TODO: move to my.cnf
+################################################################################
+set(MYSQLITE_PCACHE_SZ "(1 * 1024 * 1024 * 1024)")
+
+
+################################################################################
 # Directory structure
 ################################################################################
 set(MYSQLITE_TEST_DB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/t/db")
@@ -28,7 +34,7 @@ configure_file(
 ################################################################################
 # Compile and link
 ################################################################################
-set(mysqlite_sources src/ha_mysqlite.cc src/udf_sqlite_db.cc src/mysqlite_api.cc)
+set(mysqlite_sources src/ha_mysqlite.cc src/udf_sqlite_db.cc src/sqlite_format.cc src/pcache.cc src/mysqlite_api.cc)
 include_directories(${cmake_source_dir}/storage/mysqlite/src)
 mysql_add_plugin(mysqlite ${mysqlite_sources} STORAGE_ENGINE MODULE_ONLY MODULE_OUTPUT_NAME "libmysqlite_engine")
 

@@ -170,7 +170,8 @@ void sqlite_db_deinit(UDF_INIT *initid __attribute__((unused)))
 long long sqlite_db(UDF_INIT *initid, UDF_ARGS *args,
                     char *is_null, char *error)
 {
-  bool *is_existing_db = (bool *)initid->ptr;
+  bool is_existing_db = *(bool *)initid->ptr;
   *is_null = 0;
-  return *is_existing_db;
+
+  return is_existing_db;
 }
