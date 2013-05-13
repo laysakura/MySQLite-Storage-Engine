@@ -131,6 +131,8 @@ T u8s_to_val(const u8 * const p_sequence, u8 len_sequence) {
 
 
 static inline errstat mysqlite_fread(void *ptr, long offset, size_t nbyte, FILE * const f) {
+  // TODO: - pread() 使う
+  //       - nbyteがだいたい1024か調べる
   long prev_offset = ftell(f);
   if (fseek(f, offset, SEEK_SET) == -1) {
     perror("fseek() failed\n");
