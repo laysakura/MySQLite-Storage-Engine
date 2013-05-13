@@ -40,9 +40,10 @@ TEST(TypicalUsage, SmallData)
   while (rows->next()) {
     // Retrieve columns
     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_INTEGER);
+    ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+    ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
-    int price = rows->get_int(1);
+    int price = rows->get_int(2);
     ASSERT_GE(price, 100);
     ASSERT_LE(price, 1500);
   }
@@ -65,26 +66,27 @@ TEST(CheckAllData, SmallData)
   { // 1st row
     ASSERT_TRUE(rows->next());
     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_INTEGER);
+    ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+    ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
-    const char *name = rows->get_text(0);
+    const char *name = rows->get_text(1);
     ASSERT_STREQ("Shonan Gold", name);
 
-    int price = rows->get_int(1);
+    int price = rows->get_int(2);
     ASSERT_EQ(price, 450);
   }
   { // 2nd row
     ASSERT_TRUE(rows->next());
     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_INTEGER);
+    ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+    ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
-    const char *name = rows->get_text(0);
+    const char *name = rows->get_text(1);
     ASSERT_STREQ("Liberty Ale", name);
 
-    int price = rows->get_int(1);
+    int price = rows->get_int(2);
     ASSERT_EQ(price, 500);
   }
-  ASSERT_FALSE(rows->next());
 
   rows->close();
   conn.close();

@@ -1,0 +1,60 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use DBI;
+
+use Test::More tests => 5;
+
+use File::Basename;
+use Cwd 'realpath';
+my $testdir = realpath(dirname(__FILE__));
+
+my $dbh = DBI->connect(
+    $ENV{DBI} || "dbi:mysql:test;mysql_read_default_file=$ENV{HOME}/.my.cnf",
+    $ENV{DBI_USER} || 'root',
+    $ENV{DBI_PASSWORD} || '',
+) or die 'connection failed:';
+
+
+ok($dbh->do("drop table if exists Beer"));
+ok($dbh->do("select sqlite_db('$testdir/db/BeerDB-small.sqlite')"));
+
+## Group by
+is_deeply(
+    $dbh->selectall_arrayref("select maker, avg(price) from Beer group by maker"),
+    [
+        ['Anchor', '525.0000'],
+        ['Sankt Gallen', '450.0000'],
+        ['Sapporo', '300.0000'],
+    ],
+);
+
+## Sort
+is_deeply(
+    $dbh->selectall_arrayref("select maker, name from Beer order by maker"),
+    [
+        ['Anchor', 'Porter'],
+        ['Anchor', 'Liberty Ale'],
+        ['Sankt Gallen', 'Shonan Gold'],
+        ['Sankt Gallen', 'Sakura'],
+        ['Sankt Gallen', 'Golden Ale'],
+        ['Sapporo', 'Ebisu'],
+        ['Sapporo', 'Kuro Label'],
+    ],
+);
+
+## Join
+is_deeply(
+    $dbh->selectall_arrayref("select Beer.maker, Beer.name, Company.country from Beer, Company where Beer.maker = Company.maker;"),
+    [
+        ['Sankt Gallen', 'Shonan Gold', 'Japan'],
+        ['Sapporo', 'Ebisu', 'Japan'],
+        ['Sapporo', 'Kuro Label', 'Japan'],
+        ['Sankt Gallen', 'Sakura', 'Japan'],
+        ['Sankt Gallen', 'Golden Ale', 'Japan'],
+        ['Anchor', 'Porter', 'America'],
+        ['Anchor', 'Liberty Ale', 'America'],
+    ],
+);
