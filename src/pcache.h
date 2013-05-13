@@ -100,7 +100,8 @@ private:
     }
     else {
       // Page#pgno should be read(2) from DB file
-      // TODO: cache eviction.
+      // TODO: cache eviction algorithm is necessary after writing support.
+      // TODO: currently just overwrite the cache page without checking if the page is dirty.
       // TODO: now only read from file, and doesn't cache it on pcache.
       assert(f_db);
       errstat res = mysqlite_fread(&the_cache[pcno * pgsz], (pgno - 1) * pgsz, pgsz, f_db);
