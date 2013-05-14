@@ -18,10 +18,10 @@ my $dbh = DBI->connect(
 ) or die 'connection failed:';
 
 
-## Small-vs-large join
+## Verysmall-vs-large join
 ok($dbh->do("drop table if exists T, S"));
-ok($dbh->do("select sqlite_db('$testdir/db/join-small-vs-large.sqlite')"));
+ok($dbh->do("select sqlite_db('$testdir/db/join-verysmall-vs-large.sqlite')"));
 is_deeply(
     $dbh->selectall_arrayref("select count(*) from T, S where T.key_col = S.key_col;"),
-    [ [1000] ],
+    [ [100] ],
 );
