@@ -86,14 +86,14 @@ mysqlite_type RowCursor::get_type(int colno) const
   // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat ret = tbl_leaf_page.fetch();
-  assert(ret == MYSQLITE_OK);
+  my_assert(ret == MYSQLITE_OK);
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
     bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    assert(ret);
+    my_assert(ret);
   }
 
   return sqlite_type_to_mysqlite_type(cell.payload.cols_type[colno]);
@@ -104,14 +104,14 @@ int RowCursor::get_int(int colno) const
   // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat ret = tbl_leaf_page.fetch();
-  assert(ret == MYSQLITE_OK);
+  my_assert(ret == MYSQLITE_OK);
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
     bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    assert(ret);
+    my_assert(ret);
   }
   if (cell.payload.cols_type[colno] == ST_C0) {
     return 0;
@@ -129,14 +129,14 @@ const char *RowCursor::get_text(int colno) const
   // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat res = tbl_leaf_page.fetch();
-  assert(res == MYSQLITE_OK);
+  my_assert(res == MYSQLITE_OK);
 
   RecordCell cell;
   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
     u8 *payload_data = new u8[cell.payload_sz];
     bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    assert(ret);
+    my_assert(ret);
   }
 
   // TODO: Cache... now memory leak
@@ -201,7 +201,7 @@ bool FullscanCursor::next()
 {
   BtreePage cur_page(visit_path.back().pgno);
   errstat ret = cur_page.fetch();
-  assert(ret == MYSQLITE_OK);
+  my_assert(ret == MYSQLITE_OK);
 
   if (TABLE_LEAF == cur_page.get_btree_type()) {
     // (1) At leaf node,
@@ -244,7 +244,7 @@ bool FullscanCursor::next()
 
 bool FullscanCursor::jump_to_parent_or_finish_traversal()
 {
-  assert(visit_path.size() >= 1);
+  my_assert(visit_path.size() >= 1);
   if (visit_path.size() == 1) return false;  // finish traversal
 
   visit_path.pop_back();

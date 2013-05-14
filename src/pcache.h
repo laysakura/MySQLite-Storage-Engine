@@ -51,7 +51,7 @@ private:
    */
   public:
   void alloc(u64 pcache_sz) {
-    assert(PCACHE_MIN_SZ <= pcache_sz);
+    my_assert(PCACHE_MIN_SZ <= pcache_sz);
     this->pcache_sz = pcache_sz;
     the_cache = new u8[pcache_sz + pcache_idx_sz()]; // TODO: more sophisticated mem allocation
                                                      // (see InnoDB's ut_malloc())
@@ -90,8 +90,8 @@ private:
    */
   public:
   u8 *fetch(Pgno pgno) const {
-    assert(pgno >= 1);
-    assert(is_ready());
+    my_assert(pgno >= 1);
+    my_assert(is_ready());
 
     Pgno pcno = pgno_to_pcacheno(pgno);
     if (pgno == pcache_idx[pcno]) {
@@ -103,9 +103,9 @@ private:
       // TODO: cache eviction algorithm is necessary after writing support.
       // TODO: currently just overwrite the cache page without checking if the page is dirty.
       // TODO: now only read from file, and doesn't cache it on pcache.
-      assert(f_db);
+      my_assert(f_db);
       errstat res = mysqlite_fread(&the_cache[pcno * pgsz], (pgno - 1) * pgsz, pgsz, f_db);
-      assert(res == MYSQLITE_OK);
+      my_assert(res == MYSQLITE_OK);
       pcache_idx[pcno] = pgno;
       return &the_cache[pcno * pgsz];
     }

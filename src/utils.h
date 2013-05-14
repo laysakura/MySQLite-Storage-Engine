@@ -30,6 +30,13 @@ using namespace std;
 
 
 /*
+  Assertion
+ */
+// Suppress warning for -DNDEBUG build
+#define my_assert(expr) do {assert(expr); (void)(expr);} while (0)
+
+
+/*
 ** Logger
 */
 #define log_msg(fmt, ...)                                                   \
@@ -123,7 +130,7 @@ static inline u64 varint2u64(u8 *v)
 */
 template<typename T>
 T u8s_to_val(const u8 * const p_sequence, u8 len_sequence) {
-  assert(len_sequence > 0);
+  my_assert(len_sequence > 0);
   T v = 0;
   for (u8 i = 0; i < len_sequence; ++i)
     v = (v << 8) + p_sequence[i];

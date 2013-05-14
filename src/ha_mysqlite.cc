@@ -632,7 +632,7 @@ int ha_mysqlite::rnd_init(bool scan)
   }
 
   rows = share->conn.table_fullscan(table_share->table_name.str);
-  assert(rows);
+  my_assert(rows);
 
   DBUG_RETURN(0);
 }

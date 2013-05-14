@@ -35,10 +35,10 @@ bool copy_sqlite_table_formats(/* out */
   using namespace mysqlite;
 
   Mysqlite_share *share = Mysqlite_share::get_share();
-  assert(share->conn.is_opened());
+  my_assert(share->conn.is_opened());
 
   RowCursor *rows = share->conn.table_fullscan("sqlite_master");
-  assert(rows);
+  my_assert(rows);
 
   while (rows->next()) {
     table_names.push_back(rows->get_text(SQLITE_MASTER_COLNO_NAME));

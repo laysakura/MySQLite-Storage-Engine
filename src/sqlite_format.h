@@ -63,7 +63,7 @@ static inline u64 stype2len(u64 stype) {
   case ST_FLOAT:
     return 8;
   }
-  assert(stype != 10 && stype != 11);
+  my_assert(stype != 10 && stype != 11);
   return (stype - (12 + (stype % 2))) / 2;
 }
 
@@ -241,7 +241,7 @@ class BtreePage : public Page {
 
   public:
   Pgno get_rightmost_pg() const {
-    assert(get_btree_type() == INDEX_INTERIOR ||
+    my_assert(get_btree_type() == INDEX_INTERIOR ||
            get_btree_type() == TABLE_INTERIOR);
     return u8s_to_val<Pgno>(
       &pg_data[
@@ -487,10 +487,10 @@ class TableLeafPage : public BtreePage {
                     u8 *buf_overflown_payload) const
   {
     // Asserted get_ith_cell(Pgsz i, RecordCell *cell) is called first
-    assert(buf_overflown_payload);
-    assert(cell->overflow_pgno != 0);
-    assert(cell->payload_sz_in_origpg > 0);
-    assert(cell->payload_sz_in_origpg < cell->payload_sz);
+    my_assert(buf_overflown_payload);
+    my_assert(cell->overflow_pgno != 0);
+    my_assert(cell->payload_sz_in_origpg > 0);
+    my_assert(cell->payload_sz_in_origpg < cell->payload_sz);
 
     // Copy payload from this page and overflow pages
     u64 offset = 0;
@@ -502,7 +502,7 @@ class TableLeafPage : public BtreePage {
     for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
       Page ovpg(overflow_pgno);
       errstat res = ovpg.fetch();
-      assert(res == MYSQLITE_OK);
+      my_assert(res == MYSQLITE_OK);
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
       Pgsz payload_sz_inpg = min<u64>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
@@ -511,7 +511,7 @@ class TableLeafPage : public BtreePage {
              payload_sz_inpg);
       offset += payload_sz_inpg;
     }
-    assert(payload_sz_rem == 0);
+    my_assert(payload_sz_rem == 0);
 
     cell->payload.data = buf_overflown_payload;
     cell->payload.digest_data();
