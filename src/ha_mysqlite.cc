@@ -89,17 +89,18 @@
     -Brian
 */
 
-#include <sql_priv.h>
-#include <sql_class.h>
-#include <sql_plugin.h>
-#include <mysql/plugin.h>
-
 #include "ha_mysqlite.h"
 #include "pcache.h"
 #include "utils.h"
 #include "probes_mysql.h"
 #include "mysqlite_api.h"
 #include "mysqlite_config.h"
+
+#include <sql_priv.h>
+#include <sql_class.h>
+#include <sql_plugin.h>
+#include <mysql/plugin.h>
+
 
 /* Stuff for shares */
 mysql_mutex_t mysqlite_mutex;
@@ -169,8 +170,9 @@ static int mysqlite_init_func(void *p)
   mysqlite_hton->state=                     SHOW_OPTION_YES;
   mysqlite_hton->create=                    mysqlite_create_handler;
   mysqlite_hton->flags=                     HTON_CAN_RECREATE;
-  mysqlite_hton->system_database=   mysqlite_system_database;
-  mysqlite_hton->is_supported_system_table= mysqlite_is_supported_system_table;
+  // TODO: Correspoinding vars for MariaDB?
+  // mysqlite_hton->system_database=   mysqlite_system_database;
+  // mysqlite_hton->is_supported_system_table= mysqlite_is_supported_system_table;
 
   // Page cache
   PageCache *pcache = PageCache::get_instance();
@@ -321,9 +323,10 @@ const char* mysqlite_system_database()
 
   This array is optional, so every SE need not implement it.
 */
-static st_system_tablename ha_mysqlite_system_tables[]= {
-  {(const char*)NULL, (const char*)NULL}
-};
+// TODO: MariaDB alternative
+// static st_system_tablename ha_mysqlite_system_tables[]= {
+//   {(const char*)NULL, (const char*)NULL}
+// };
 
 /**
   @brief Check if the given db.tablename is a system table for this SE.
@@ -337,28 +340,29 @@ static st_system_tablename ha_mysqlite_system_tables[]= {
     @retval TRUE   Given db.table_name is supported system table.
     @retval FALSE  Given db.table_name is not a supported system table.
 */
-static bool mysqlite_is_supported_system_table(const char *db,
-                                              const char *table_name,
-                                              bool is_sql_layer_system_table)
-{
-  st_system_tablename *systab;
+// TODO: MariaDB alternative
+// static bool mysqlite_is_supported_system_table(const char *db,
+//                                               const char *table_name,
+//                                               bool is_sql_layer_system_table)
+// {
+//   st_system_tablename *systab;
 
-  // Does this SE support "ALL" SQL layer system tables ?
-  if (is_sql_layer_system_table)
-    return false;
+//   // Does this SE support "ALL" SQL layer system tables ?
+//   if (is_sql_layer_system_table)
+//     return false;
 
-  // Check if this is SE layer system tables
-  systab= ha_mysqlite_system_tables;
-  while (systab && systab->db)
-  {
-    if (systab->db == db &&
-        strcmp(systab->tablename, table_name) == 0)
-      return true;
-    systab++;
-  }
+//   // Check if this is SE layer system tables
+//   systab= ha_mysqlite_system_tables;
+//   while (systab && systab->db)
+//   {
+//     if (systab->db == db &&
+//         strcmp(systab->tablename, table_name) == 0)
+//       return true;
+//     systab++;
+//   }
 
-  return false;
-}
+//   return false;
+// }
 
 
 /**
@@ -1121,7 +1125,7 @@ static struct st_mysql_show_var func_status[]=
   {0,0,SHOW_UNDEF}
 };
 
-mysql_declare_plugin(mysqlite)
+maria_declare_plugin(mysqlite)
 {
   MYSQL_STORAGE_ENGINE_PLUGIN,
   &mysqlite_storage_engine,
@@ -1134,7 +1138,7 @@ mysql_declare_plugin(mysqlite)
   MYSQLITE_VERSION,
   func_status,                                   /* status variables */
   mysqlite_system_variables,                     /* system variables */
-  NULL,                                          /* config options */
-  0,
+  "0.0",                      /* string version */
+  MariaDB_PLUGIN_MATURITY_EXPERIMENTAL /* maturity */
 }
-mysql_declare_plugin_end;
+maria_declare_plugin_end;

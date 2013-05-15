@@ -35,17 +35,26 @@
 #define _HA_MYSQLITE_H_
 
 
+using namespace std;
+#include <string>
+#include "sqlite_format.h"
+#include "mysqlite_api.h"
+
 #include "my_global.h"                   /* ulonglong */
 #include "thr_lock.h"                    /* THR_LOCK, THR_LOCK_DATA */
 #include "handler.h"                     /* handler */
 #include "my_base.h"                     /* ha_rows */
 
-#include <string>
-#include "sqlite_format.h"
-#include "mysqlite_api.h"
 
-using namespace std;
-
+/*
+  Only for MariaDB
+ */
+class Handler_share
+{
+public:
+  Handler_share() {}
+  virtual ~Handler_share() {}
+};
 
 /** @brief
   Example_share is a class that will be shared among all open handlers.

@@ -18,15 +18,15 @@ using namespace std;
 #include <vector>
 #include <string>
 
-#include <sql_priv.h>
-#include <sql_class.h>
-#include <sql_plugin.h>
-
 #include "udf_sqlite_db.h"
 #include "sqlite_format.h"
 #include "utils.h"
 #include "mysqlite_api.h"
 #include "ha_mysqlite.h"
+
+#include <sql_priv.h>
+#include <sql_class.h>
+#include <sql_plugin.h>
 
 bool copy_sqlite_table_formats(/* out */
                                vector<string> &table_names,

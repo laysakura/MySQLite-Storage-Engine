@@ -24,10 +24,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <sql_plugin.h>
-
 #include "mysqlite_types.h"
 #include "utils.h"
+
+#include <sql_plugin.h>
 
 
 struct BtreePathNode {

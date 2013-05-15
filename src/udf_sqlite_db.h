@@ -2,6 +2,12 @@
 #define _UDF_SQLITE_DB_H_
 
 
+#include <sql_priv.h>
+#include <sql_class.h>
+#include <sql_plugin.h>
+#include <mysql/plugin.h>
+
+
 extern "C" {
   my_bool sqlite_db_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
   void sqlite_db_deinit(UDF_INIT *initid);
