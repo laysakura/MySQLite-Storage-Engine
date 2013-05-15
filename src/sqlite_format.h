@@ -27,8 +27,6 @@
 #include "mysqlite_types.h"
 #include "utils.h"
 
-#include <sql_plugin.h>
-
 
 struct BtreePathNode {
   Pgno pgno;

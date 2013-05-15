@@ -92,14 +92,10 @@
 #include "ha_mysqlite.h"
 #include "pcache.h"
 #include "utils.h"
-#include "probes_mysql.h"
 #include "mysqlite_api.h"
 #include "mysqlite_config.h"
 
-#include <sql_priv.h>
-#include <sql_class.h>
-#include <sql_plugin.h>
-#include <mysql/plugin.h>
+#include "sql_class.h"
 
 
 /* Stuff for shares */
@@ -116,6 +112,81 @@ static const char* mysqlite_system_database();
 static bool mysqlite_is_supported_system_table(const char *db,
                                       const char *table_name,
                                       bool is_sql_layer_system_table);
+
+static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
+                                       TABLE_SHARE *table_s,
+                                       HA_CREATE_INFO *info);
+
+/**
+  structure for CREATE TABLE options (table options)
+
+  These can be specified in the CREATE TABLE:
+  CREATE TABLE ( ... ) {...here...}
+*/
+struct ha_table_option_struct {
+  const char *type;
+  const char *filename;
+  const char *optname;
+  const char *tabname;
+  const char *tablist;
+  const char *dbname;
+  const char *separator;
+//const char *connect;
+  const char *qchar;
+  const char *module;
+  const char *subtype;
+  const char *catfunc;
+  const char *oplist;
+  const char *data_charset;
+  ulonglong lrecl;
+  ulonglong elements;
+//ulonglong estimate;
+  ulonglong multiple;
+  ulonglong header;
+  ulonglong quoted;
+  ulonglong ending;
+  ulonglong compressed;
+  bool mapped;
+  bool huge;
+  bool split;
+  bool readonly;
+  bool sepindex;
+  };
+
+ha_create_table_option mysqlite_table_option_list[]=
+{
+  // These option are for stand alone Connect tables
+  HA_TOPTION_STRING("TABLE_TYPE", type),
+  HA_TOPTION_STRING("FILE_NAME", filename),
+  HA_TOPTION_STRING("XFILE_NAME", optname),
+//HA_TOPTION_STRING("CONNECT_STRING", connect),
+  HA_TOPTION_STRING("TABNAME", tabname),
+  HA_TOPTION_STRING("TABLE_LIST", tablist),
+  HA_TOPTION_STRING("DBNAME", dbname),
+  HA_TOPTION_STRING("SEP_CHAR", separator),
+  HA_TOPTION_STRING("QCHAR", qchar),
+  HA_TOPTION_STRING("MODULE", module),
+  HA_TOPTION_STRING("SUBTYPE", subtype),
+  HA_TOPTION_STRING("CATFUNC", catfunc),
+  HA_TOPTION_STRING("OPTION_LIST", oplist),
+  HA_TOPTION_STRING("DATA_CHARSET", data_charset),
+  HA_TOPTION_NUMBER("LRECL", lrecl, 0, 0, INT_MAX32, 1),
+  HA_TOPTION_NUMBER("BLOCK_SIZE", elements, 0, 0, INT_MAX32, 1),
+//HA_TOPTION_NUMBER("ESTIMATE", estimate, 0, 0, INT_MAX32, 1),
+  HA_TOPTION_NUMBER("MULTIPLE", multiple, 0, 0, 2, 1),
+  HA_TOPTION_NUMBER("HEADER", header, 0, 0, 3, 1),
+  HA_TOPTION_NUMBER("QUOTED", quoted, -1, 0, 3, 1),
+  HA_TOPTION_NUMBER("ENDING", ending, -1, 0, INT_MAX32, 1),
+  HA_TOPTION_NUMBER("COMPRESS", compressed, 0, 0, 2, 1),
+//HA_TOPTION_BOOL("COMPRESS", compressed, 0),
+  HA_TOPTION_BOOL("MAPPED", mapped, 0),
+  HA_TOPTION_BOOL("HUGE", huge, 0),
+  HA_TOPTION_BOOL("SPLIT", split, 0),
+  HA_TOPTION_BOOL("READONLY", readonly, 0),
+  HA_TOPTION_BOOL("SEPINDEX", sepindex, 0),
+  HA_TOPTION_END
+};
+
 
 static uchar* mysqlite_get_key(Mysqlite_share *share, size_t *length,
                                my_bool not_used __attribute__((unused)))
@@ -170,9 +241,14 @@ static int mysqlite_init_func(void *p)
   mysqlite_hton->state=                     SHOW_OPTION_YES;
   mysqlite_hton->create=                    mysqlite_create_handler;
   mysqlite_hton->flags=                     HTON_CAN_RECREATE;
+#ifndef MARIADB
   // TODO: Correspoinding vars for MariaDB?
-  // mysqlite_hton->system_database=   mysqlite_system_database;
-  // mysqlite_hton->is_supported_system_table= mysqlite_is_supported_system_table;
+  mysqlite_hton->system_database=   mysqlite_system_database;
+  mysqlite_hton->is_supported_system_table= mysqlite_is_supported_system_table;
+#else
+  mysqlite_hton->table_options= mysqlite_table_option_list;
+  mysqlite_hton->discover_table_structure= mysqlite_assisted_discovery;
+#endif //MARIADB
 
   // Page cache
   PageCache *pcache = PageCache::get_instance();
@@ -324,9 +400,11 @@ const char* mysqlite_system_database()
   This array is optional, so every SE need not implement it.
 */
 // TODO: MariaDB alternative
-// static st_system_tablename ha_mysqlite_system_tables[]= {
-//   {(const char*)NULL, (const char*)NULL}
-// };
+#ifndef MARIADB
+static st_system_tablename ha_mysqlite_system_tables[]= {
+  {(const char*)NULL, (const char*)NULL}
+};
+#endif
 
 /**
   @brief Check if the given db.tablename is a system table for this SE.
@@ -339,31 +417,32 @@ const char* mysqlite_system_database()
   @return
     @retval TRUE   Given db.table_name is supported system table.
     @retval FALSE  Given db.table_name is not a supported system table.
-*/
+ */
 // TODO: MariaDB alternative
-// static bool mysqlite_is_supported_system_table(const char *db,
-//                                               const char *table_name,
-//                                               bool is_sql_layer_system_table)
-// {
-//   st_system_tablename *systab;
+#ifndef MARIADB
+static bool mysqlite_is_supported_system_table(const char *db,
+                                              const char *table_name,
+                                              bool is_sql_layer_system_table)
+{
+  st_system_tablename *systab;
 
-//   // Does this SE support "ALL" SQL layer system tables ?
-//   if (is_sql_layer_system_table)
-//     return false;
+  // Does this SE support "ALL" SQL layer system tables ?
+  if (is_sql_layer_system_table)
+    return false;
 
-//   // Check if this is SE layer system tables
-//   systab= ha_mysqlite_system_tables;
-//   while (systab && systab->db)
-//   {
-//     if (systab->db == db &&
-//         strcmp(systab->tablename, table_name) == 0)
-//       return true;
-//     systab++;
-//   }
+  // Check if this is SE layer system tables
+  systab= ha_mysqlite_system_tables;
+  while (systab && systab->db)
+  {
+    if (systab->db == db &&
+        strcmp(systab->tablename, table_name) == 0)
+      return true;
+    systab++;
+  }
 
-//   return false;
-// }
-
+  return false;
+}
+#endif
 
 /**
   @brief
@@ -1107,6 +1186,59 @@ static struct st_mysql_sys_var* mysqlite_system_variables[]= {
   NULL
 };
 
+#ifdef MARIADB
+/**
+  @brief
+  mysqlite_assisted_discovery() is called when creating a table with no columns.
+
+  @details
+  When assisted discovery is used the .frm file have not already been
+  created. You can overwrite some definitions at this point but the
+  main purpose of it is to define the columns for some table types.
+*/
+static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
+                                       TABLE_SHARE *table_s,
+                                       HA_CREATE_INFO *create_info)
+{
+  int b = 0;
+  char        buf[1024];
+  String      sql(buf, sizeof(buf), system_charset_info);
+
+
+  // { // Duplicate SQLite DDLs to MySQL
+  //   vector<string> table_names, ddls;
+  //   if (!copy_sqlite_table_formats(table_names, ddls))
+  //     goto err_ret;
+
+  //   // Drop all tables defined in SQLite DB first (for updating .FRM)
+  //   for (vector<string>::iterator it = table_names.begin();
+  //        it != table_names.end(); ++it)
+  //   {
+  //     string sql = string("drop table if exists ") + *it;
+  //     if (mysql_query(conn, sql.c_str())) {
+  //       log_msg("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+  //       goto err_ret;
+  //     }
+  //   }
+
+  //   // Create tables
+  //   for (vector<string>::iterator it = ddls.begin(); it != ddls.end(); ++it) {
+  //     if (mysql_query(conn, string(*it + " engine=mysqlite").c_str())) {
+  //       log_msg("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
+  //       goto err_ret;
+  //     }
+  //   }
+  // }
+
+  sql.copy(STRING_WITH_LEN("CREATE TABLE nakatani_test (a INT)"), system_charset_info);  // ENGINE=MYSQLITEと言わないでいいのかね? -> 何故かおkだった
+
+  if (!b)
+    b= table_s->init_from_sql_statement_string(thd, true,
+                                               sql.ptr(), sql.length());
+  return b;
+}
+#endif //MARIADB
+
 // this is an example of SHOW_FUNC and of my_snprintf() service
 static int show_func_mysqlite(MYSQL_THD thd, struct st_mysql_show_var *var,
                              char *buf)
@@ -1125,6 +1257,7 @@ static struct st_mysql_show_var func_status[]=
   {0,0,SHOW_UNDEF}
 };
 
+#ifdef MARIADB
 maria_declare_plugin(mysqlite)
 {
   MYSQL_STORAGE_ENGINE_PLUGIN,
@@ -1142,3 +1275,22 @@ maria_declare_plugin(mysqlite)
   MariaDB_PLUGIN_MATURITY_EXPERIMENTAL /* maturity */
 }
 maria_declare_plugin_end;
+#else
+mysql_declare_plugin(mysqlite)
+{
+  MYSQL_STORAGE_ENGINE_PLUGIN,
+  &mysqlite_storage_engine,
+  "MYSQLITE",
+  "Sho Nakatani",
+  "MySQLite Storage Engine",
+  PLUGIN_LICENSE_GPL,
+  mysqlite_init_func,                            /* Plugin Init */
+  mysqlite_done_func,                            /* Plugin Deinit */
+  MYSQLITE_VERSION,
+  func_status,                                   /* status variables */
+  mysqlite_system_variables,                     /* system variables */
+  NULL,                                          /* config options */
+  0,
+}
+mysql_declare_plugin_end;
+#endif

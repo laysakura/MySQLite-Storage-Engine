@@ -40,10 +40,7 @@ using namespace std;
 #include "sqlite_format.h"
 #include "mysqlite_api.h"
 
-#include "my_global.h"                   /* ulonglong */
-#include "thr_lock.h"                    /* THR_LOCK, THR_LOCK_DATA */
 #include "handler.h"                     /* handler */
-#include "my_base.h"                     /* ha_rows */
 
 
 /*

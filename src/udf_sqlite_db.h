@@ -2,10 +2,7 @@
 #define _UDF_SQLITE_DB_H_
 
 
-#include <sql_priv.h>
 #include <sql_class.h>
-#include <sql_plugin.h>
-#include <mysql/plugin.h>
 
 
 extern "C" {

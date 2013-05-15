@@ -26,7 +26,6 @@ using namespace std;
 
 #include <sql_priv.h>
 #include <sql_class.h>
-#include <sql_plugin.h>
 
 bool copy_sqlite_table_formats(/* out */
                                vector<string> &table_names,
