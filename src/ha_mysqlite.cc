@@ -1222,13 +1222,29 @@ static struct st_mysql_sys_var* mysqlite_system_variables[]= {
   NULL
 };
 
-#ifdef MARIADB
-bool copy_sqlite_table_formats(const char * const path,
-                               /* out */
+
+bool copy_sqlite_table_formats(/* out */
                                vector<string> &table_names,
-                               vector<string> &ddls);
+                               vector<string> &ddls)
+{
+  using namespace mysqlite;
 
+  Mysqlite_share *share = Mysqlite_share::get_share();
+  my_assert(share->conn.is_opened());
 
+  RowCursor *rows = share->conn.table_fullscan("sqlite_master");
+  my_assert(rows);
+
+  while (rows->next()) {
+    table_names.push_back(rows->get_text(SQLITE_MASTER_COLNO_NAME));
+    ddls.push_back(rows->get_text(SQLITE_MASTER_COLNO_SQL));
+  }
+
+  rows->close();
+  return true;
+}
+
+#ifdef MARIADB
 /**
   @brief
   mysqlite_assisted_discovery() is called when creating a table with no columns.
@@ -1273,7 +1289,7 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
     // Duplicate SQLite DDLs to MySQL
     // TODO: ここで，TABLE_SHARE::table_name に入ってるDDLだけをsqlite_masterから取り出す必要がある
     vector<string> table_names, ddls;
-    if (!copy_sqlite_table_formats("TODO", table_names, ddls))
+    if (!copy_sqlite_table_formats(table_names, ddls))
       return 1;
 
     // Create tables
