@@ -11,7 +11,7 @@ cat <<EOF
 
 -- [MySQLite] --
 EOF
-~/local/mysql-5.6/bin/mysql -v -v -u root test -e "select sqlite_db('$db'); $query;"
+~/local/mysql-5.6/bin/mysql -v -v -u root test -e "$ddl; $query;"
 
 
 cat <<EOF
