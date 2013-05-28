@@ -5,7 +5,7 @@ use warnings;
 
 use DBI;
 
-use Test::More tests => 5;
+use Test::More tests => 7;
 
 use File::Basename;
 use Cwd 'realpath';
@@ -19,7 +19,9 @@ my $dbh = DBI->connect(
 
 
 ok($dbh->do("drop table if exists Beer"));
-ok($dbh->do("select sqlite_db('$testdir/db/BeerDB-small.sqlite')"));
+ok($dbh->do("drop table if exists Company"));
+ok($dbh->do("create table Beer engine=mysqlite file_name='$testdir/db/BeerDB-small.sqlite'"));
+ok($dbh->do("create table Company engine=mysqlite file_name='$testdir/db/BeerDB-small.sqlite'"));
 
 ## Group by
 is_deeply(
@@ -49,12 +51,12 @@ is_deeply(
 is_deeply(
     $dbh->selectall_arrayref("select Beer.maker, Beer.name, Company.country from Beer, Company where Beer.maker = Company.maker;"),
     [
-        ['Sankt Gallen', 'Shonan Gold', 'Japan'],
-        ['Sapporo', 'Ebisu', 'Japan'],
-        ['Sapporo', 'Kuro Label', 'Japan'],
-        ['Sankt Gallen', 'Sakura', 'Japan'],
-        ['Sankt Gallen', 'Golden Ale', 'Japan'],
         ['Anchor', 'Porter', 'America'],
         ['Anchor', 'Liberty Ale', 'America'],
+        ['Sankt Gallen', 'Shonan Gold', 'Japan'],
+        ['Sankt Gallen', 'Sakura', 'Japan'],
+        ['Sankt Gallen', 'Golden Ale', 'Japan'],
+        ['Sapporo', 'Ebisu', 'Japan'],
+        ['Sapporo', 'Kuro Label', 'Japan'],
     ],
 );
