@@ -5,7 +5,7 @@ use warnings;
 
 use DBI;
 
-use Test::More tests => 4;
+use Test::More tests => 8;
 
 use File::Basename;
 use Cwd 'realpath';
@@ -18,10 +18,9 @@ my $dbh = DBI->connect(
 ) or die 'connection failed:';
 
 # Reading existing DB
-is_deeply(
-    $dbh->selectall_arrayref("select sqlite_db('$testdir/db/01-a.sqlite')"),
-    [ [1] ],
-);
+ok($dbh->do("drop table if exists T0"));
+ok($dbh->do("create table T0 engine=mysqlite file_name='$testdir/db/01-a.sqlite'"));
+
 
 # Checking if new DB is really created
 SKIP: {
@@ -34,8 +33,12 @@ SKIP: {
     unlink("$testdir/db/01-NEW.sqlite");
 }
 
+
+# Error on creating non-existing table
+ok($dbh->do("drop table if exists T0"));
+ok(! $dbh->do("create table T100 engine=mysqlite file_name='$testdir/db/01-a.sqlite'"));
+
+
 # Error on reading illegal SQLite3 DB
-is(
-    $dbh->do("select sqlite_db('$testdir/db/01-illegal.sqlite')"),
-    undef,
-);
+ok($dbh->do("drop table if exists T0"));
+ok(! $dbh->do("create table T0 engine=mysqlite file_name='$testdir/db/01-illegal.sqlite'"));

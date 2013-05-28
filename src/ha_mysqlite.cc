@@ -750,7 +750,7 @@ int ha_mysqlite::rnd_init(bool scan)
     abort();    // TODO: More decent way to report SQLite db is not opened.
   }
 
-  rows = share->conn.table_fullscan(/*table_share->table_name.str*/"T0");
+  rows = share->conn.table_fullscan(table_share->table_name.str);
   my_assert(rows);
 
   DBUG_RETURN(0);
@@ -1259,7 +1259,6 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
                                        HA_CREATE_INFO *create_info)
 {
   int b = 0;
-  char        buf[1024];
   PTOS        topt= table_s->option_struct;
   const char *path=   topt->filename;
   bool is_existing_db = false;
@@ -1281,7 +1280,7 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
   }
   else {
     log_errstat(res);
-    return 1;
+    return HA_ERR_INTERNAL_ERROR;
   }
 
   assert(is_existing_db);  // TODO: support new creation of db files
@@ -1290,16 +1289,21 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
     // TODO: ここで，TABLE_SHARE::table_name に入ってるDDLだけをsqlite_masterから取り出す必要がある
     vector<string> table_names, ddls;
     if (!copy_sqlite_table_formats(table_names, ddls))
-      return 1;
+      return HA_ERR_INTERNAL_ERROR;
 
-    // Create tables
-    for (int i = 0; i < table_names.size(); ++i) {
-      b = table_s->init_from_sql_statement_string(thd, true,
-                                                  ddls[i].c_str(), ddls[i].size());
-      if (b) {
-        log_msg("Error in creating table: %s\n", ddls[i].c_str());
-        return b;
+    // Create requested table
+    string *ddl = NULL;
+    for (unsigned int i = 0; i < table_names.size(); ++i) {
+      if (table_names[i] == table_s->table_name.str) {
+        ddl = &ddls[i];
       }
+    }
+    if (!ddl) return HA_ERR_NO_SUCH_TABLE;
+    b = table_s->init_from_sql_statement_string(thd, true,
+                                                (*ddl).c_str(), (*ddl).size());
+    if (b) {
+      log_msg("Error in creating table: %s\n", (*ddl).c_str());
+      return b;
     }
   }
   return 0;

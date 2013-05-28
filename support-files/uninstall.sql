@@ -1,2 +1,1 @@
 UNINSTALL PLUGIN mysqlite;
-DROP FUNCTION sqlite_db;
