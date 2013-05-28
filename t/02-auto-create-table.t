@@ -5,7 +5,7 @@ use warnings;
 
 use DBI;
 
-use Test::More tests => 17;
+use Test::More tests => 15;
 
 use File::Basename;
 use Cwd 'realpath';
@@ -20,7 +20,7 @@ my $dbh = DBI->connect(
 
 # 1 table with short DDL
 ok($dbh->do("drop table if exists test02_table1_ddl_short_t1"));
-ok($dbh->do("select sqlite_db('$testdir/db/02-table1-ddl_short.sqlite')"));
+ok($dbh->do("create table test02_table1_ddl_short_t1 engine=mysqlite file_name='$testdir/db/02-table1-ddl_short.sqlite'"));
 is_deeply(
     $dbh->selectall_arrayref("select column_name from information_schema.columns where table_name='test02_table1_ddl_short_t1'"),
     [ ['c1'] ],
@@ -31,7 +31,9 @@ is_deeply(
 ok($dbh->do("drop table if exists test02_table3_ddl_short_t1"));
 ok($dbh->do("drop table if exists test02_table3_ddl_short_t2"));
 ok($dbh->do("drop table if exists test02_table3_ddl_short_t3"));
-ok($dbh->do("select sqlite_db('$testdir/db/02-table3-ddl_short.sqlite')"));
+ok($dbh->do("create table test02_table3_ddl_short_t1 engine=mysqlite file_name='$testdir/db/02-table3-ddl_short.sqlite'"));
+ok($dbh->do("create table test02_table3_ddl_short_t2 engine=mysqlite file_name='$testdir/db/02-table3-ddl_short.sqlite'"));
+ok($dbh->do("create table test02_table3_ddl_short_t3 engine=mysqlite file_name='$testdir/db/02-table3-ddl_short.sqlite'"));
 is_deeply(
     $dbh->selectall_arrayref("select column_name from information_schema.columns where table_name='test02_table3_ddl_short_t1'"),
     [ ['c1'] ],
@@ -47,29 +49,9 @@ is_deeply(
 
 
 # 1 table w/ so long schema (that it exeeds page#1 of SQLite DB)
-ok($dbh->do("drop table if exists test02_table1_ddl_long_t1"));
-ok($dbh->do("select sqlite_db('$testdir/db/02-table1-ddl_long.sqlite')"));
+ok($dbh->do("drop table if exists test02_table1_ddl_long_t20"));
+ok($dbh->do("create table test02_table1_ddl_long_t20 engine=mysqlite file_name='$testdir/db/02-table1-ddl_long.sqlite'"));
 is_deeply(
     $dbh->selectall_arrayref("select column_name from information_schema.columns where table_name='test02_table1_ddl_long_t20'"),
     [ ['col20'] ],
 );
-
-
-# Tables should be created on current DB
-SKIP: {
-    skip 'BUG: mysql_real_connect hard coding', 4;
-    ok($dbh->do("drop database if exists test02db_for_mysqlite"));
-    ok($dbh->do("create database test02db_for_mysqlite"));
-    my $host = $dbh->private_data->{host};
-    my $database = $dbh->private_data->{database};
-    my $dbh2 = DBI->connect(
-        'dbi:mysql:database=' . $database ,#. ';host=' . $host,
-        $ENV{DBI_USER} || 'root',
-        $ENV{DBI_PASSWORD} || '',
-    ) or die 'connection failed:';
-    ok($dbh2->do("select sqlite_db('$testdir/db/02-table1-ddl_short.sqlite')"));
-    is_deeply(
-        $dbh2->selectall_arrayref("select count(*) from test02db_for_mysqlite.test02_table1_ddl_short_t1"),
-        [ [0] ],
-    );
-}
