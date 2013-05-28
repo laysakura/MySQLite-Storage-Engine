@@ -20,7 +20,7 @@ my $dbh = DBI->connect(
 
 ## Simple full scan
 ok($dbh->do("drop table if exists japan"));
-ok($dbh->do("select sqlite_db('$testdir/db/03-simple-beer.sqlite')"));
+ok($dbh->do("create table japan engine=mysqlite file_name='$testdir/db/03-simple-beer.sqlite'"));
 is_deeply(
     $dbh->selectall_arrayref("select * from japan"),
     [
@@ -47,8 +47,8 @@ is_deeply(
 );
 
 ## Long record (wich has overflow pages)
-ok($dbh->do("drop table if exists wikipedia"));
-ok($dbh->do("select sqlite_db('$testdir/db/wikipedia.sqlite')"));
+ok($dbh->do("drop table if exists Alcohol"));
+ok($dbh->do("create table Alcohol engine=mysqlite file_name='$testdir/db/wikipedia.sqlite'"));
 is_deeply(
     $dbh->selectall_arrayref("select url from Alcohol"),
     [
@@ -70,7 +70,7 @@ is_deeply(
 TODO: {
     local $TODO = 'Japanese support';
     ok($dbh->do("drop table if exists japan"));
-    ok($dbh->do("select sqlite_db('$testdir/db/03-simple-beer-jp.sqlite')"));
+    ok($dbh->do("create table japan engine=mysqlite file_name='$testdir/db/03-simple-beer-jp.sqlite'"));
     is_deeply(
         $dbh->selectall_arrayref("select * from japan"),
         [
