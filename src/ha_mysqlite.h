@@ -43,6 +43,8 @@ using namespace std;
 #include "handler.h"                     /* handler */
 
 
+typedef struct ha_table_option_struct TOS, *PTOS;
+
 /*
   Only for MariaDB
  */

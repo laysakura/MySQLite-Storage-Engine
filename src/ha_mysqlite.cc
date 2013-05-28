@@ -89,6 +89,7 @@
     -Brian
 */
 
+#undef SAFE_MUTEX
 #include "ha_mysqlite.h"
 #include "pcache.h"
 #include "utils.h"
@@ -187,6 +188,35 @@ ha_create_table_option mysqlite_table_option_list[]=
   HA_TOPTION_END
 };
 
+/**
+  structure for CREATE TABLE options (field options)
+
+  These can be specified in the CREATE TABLE per field:
+  CREATE TABLE ( field ... {...here...}, ... )
+*/
+struct ha_field_option_struct
+{
+  ulonglong offset;
+  ulonglong freq;      // Not used by this version
+  ulonglong opt;       // Not used by this version
+  ulonglong fldlen;
+  const char *dateformat;
+  const char *fieldformat;
+  char *special;
+};
+
+ha_create_table_option mysqlite_field_option_list[]=
+{
+  HA_FOPTION_NUMBER("FLAG", offset, -1, 0, INT_MAX32, 1),
+  HA_FOPTION_NUMBER("FREQUENCY", freq, 0, 0, INT_MAX32, 1), // not used
+  HA_FOPTION_NUMBER("OPT_VALUE", opt, 0, 0, 2, 1),  // used for indexing
+  HA_FOPTION_NUMBER("FIELD_LENGTH", fldlen, 0, 0, INT_MAX32, 1),
+  HA_FOPTION_STRING("DATE_FORMAT", dateformat),
+  HA_FOPTION_STRING("FIELD_FORMAT", fieldformat),
+  HA_FOPTION_STRING("SPECIAL", special),
+  HA_FOPTION_END
+};
+
 
 static uchar* mysqlite_get_key(Mysqlite_share *share, size_t *length,
                                my_bool not_used __attribute__((unused)))
@@ -211,8 +241,10 @@ static void init_mysqlite_psi_keys()
   int count;
 
   count= array_elements(all_mysqlite_mutexes);
-  mysql_mutex_register(category, all_mysqlite_mutexes, count);
+  PSI_server->register_mutex(category, all_mysqlite_mutexes, count);
 }
+#else
+static void init_mysqlite_psi_keys() {}
 #endif
 
 Mysqlite_share::Mysqlite_share()
@@ -226,27 +258,56 @@ Mysqlite_share::Mysqlite_share()
 }
 
 
+/**
+  @brief
+  If frm_error() is called then we will use this to determine
+  the file extensions that exist for the storage engine. This is also
+  used by the default rename_table and delete_table method in
+  handler.cc.
+
+  For engines that have two file name extentions (separate meta/index file
+  and data file), the order of elements is relevant. First element of engine
+  file name extentions array should be meta/index file extention. Second
+  element - data file extention. This order is assumed by
+  prepare_for_repair() when REPAIR TABLE ... USE_FRM is issued.
+
+  @see
+  rename_table method in handler.cc and
+  delete_table method in handler.cc
+*/
+
+static const char *ha_mysqlite_exts[] = {
+  ".sqlite", ".db", ".sqlite3",
+};
+
+const char **ha_mysqlite::bas_ext() const
+{
+  return ha_mysqlite_exts;
+}
+
+
 static int mysqlite_init_func(void *p)
 {
   DBUG_ENTER("mysqlite_init_func");
 
-#ifdef HAVE_PSI_INTERFACE
   init_mysqlite_psi_keys();
-#endif
 
-  mysqlite_hton= (handlerton *)p;
   mysql_mutex_init(mysqlite_key_mutex, &mysqlite_mutex, MY_MUTEX_INIT_FAST);
   (void) my_hash_init(&mysqlite_open_tables, system_charset_info, 32, 0, 0,
                       (my_hash_get_key)mysqlite_get_key, 0, 0);
+
+  mysqlite_hton= (handlerton *)p;
   mysqlite_hton->state=                     SHOW_OPTION_YES;
   mysqlite_hton->create=                    mysqlite_create_handler;
-  mysqlite_hton->flags=                     HTON_CAN_RECREATE;
+  mysqlite_hton->flags=   HTON_TEMPORARY_NOT_SUPPORTED | HTON_NO_PARTITION;
 #ifndef MARIADB
   // TODO: Correspoinding vars for MariaDB?
   mysqlite_hton->system_database=   mysqlite_system_database;
   mysqlite_hton->is_supported_system_table= mysqlite_is_supported_system_table;
 #else
   mysqlite_hton->table_options= mysqlite_table_option_list;
+  mysqlite_hton->field_options= mysqlite_field_option_list;
+  mysqlite_hton->tablefile_extensions= ha_mysqlite_exts;
   mysqlite_hton->discover_table_structure= mysqlite_assisted_discovery;
 #endif //MARIADB
 
@@ -349,35 +410,9 @@ static handler* mysqlite_create_handler(handlerton *hton,
 
 ha_mysqlite::ha_mysqlite(handlerton *hton, TABLE_SHARE *table_arg)
   :handler(hton, table_arg)
-{}
-
-
-/**
-  @brief
-  If frm_error() is called then we will use this to determine
-  the file extensions that exist for the storage engine. This is also
-  used by the default rename_table and delete_table method in
-  handler.cc.
-
-  For engines that have two file name extentions (separate meta/index file
-  and data file), the order of elements is relevant. First element of engine
-  file name extentions array should be meta/index file extention. Second
-  element - data file extention. This order is assumed by
-  prepare_for_repair() when REPAIR TABLE ... USE_FRM is issued.
-
-  @see
-  rename_table method in handler.cc and
-  delete_table method in handler.cc
-*/
-
-static const char *ha_mysqlite_exts[] = {
-  NullS
-};
-
-const char **ha_mysqlite::bas_ext() const
 {
-  return ha_mysqlite_exts;
 }
+
 
 /*
   Following handler function provides access to
@@ -714,7 +749,7 @@ int ha_mysqlite::rnd_init(bool scan)
     abort();    // TODO: More decent way to report SQLite db is not opened.
   }
 
-  rows = share->conn.table_fullscan(table_share->table_name.str);
+  rows = share->conn.table_fullscan(/*table_share->table_name.str*/"T0");
   my_assert(rows);
 
   DBUG_RETURN(0);
@@ -1187,6 +1222,12 @@ static struct st_mysql_sys_var* mysqlite_system_variables[]= {
 };
 
 #ifdef MARIADB
+bool copy_sqlite_table_formats(const char * const path,
+                               /* out */
+                               vector<string> &table_names,
+                               vector<string> &ddls);
+
+
 /**
   @brief
   mysqlite_assisted_discovery() is called when creating a table with no columns.
@@ -1202,40 +1243,49 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
 {
   int b = 0;
   char        buf[1024];
-  String      sql(buf, sizeof(buf), system_charset_info);
+  PTOS        topt= table_s->option_struct;
+  const char *path=   topt->filename;
+  bool is_existing_db = false;
 
+  // Open DB and Connection
+  Mysqlite_share *share = Mysqlite_share::get_share();
+  if (!share) {
+    log_errstat(MYSQLITE_OUT_OF_MEMORY);
+    return 1;
+  }
+  errstat res = share->conn.open(path);
+  if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
+    // Newly create SQLite database file
+    is_existing_db = false;
+  }
+  else if (res == MYSQLITE_OK) {
+    // SQLite database file already exists
+    is_existing_db = true;
+  }
+  else {
+    log_errstat(res);
+    return 1;
+  }
 
-  // { // Duplicate SQLite DDLs to MySQL
-  //   vector<string> table_names, ddls;
-  //   if (!copy_sqlite_table_formats(table_names, ddls))
-  //     goto err_ret;
+  assert(is_existing_db);  // TODO: support new creation of db files
+  if (is_existing_db) {
+    // Duplicate SQLite DDLs to MySQL
+    // TODO: ここで，TABLE_SHARE::table_name に入ってるDDLだけをsqlite_masterから取り出す必要がある
+    vector<string> table_names, ddls;
+    if (!copy_sqlite_table_formats("TODO", table_names, ddls))
+      return 1;
 
-  //   // Drop all tables defined in SQLite DB first (for updating .FRM)
-  //   for (vector<string>::iterator it = table_names.begin();
-  //        it != table_names.end(); ++it)
-  //   {
-  //     string sql = string("drop table if exists ") + *it;
-  //     if (mysql_query(conn, sql.c_str())) {
-  //       log_msg("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
-  //       goto err_ret;
-  //     }
-  //   }
-
-  //   // Create tables
-  //   for (vector<string>::iterator it = ddls.begin(); it != ddls.end(); ++it) {
-  //     if (mysql_query(conn, string(*it + " engine=mysqlite").c_str())) {
-  //       log_msg("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
-  //       goto err_ret;
-  //     }
-  //   }
-  // }
-
-  sql.copy(STRING_WITH_LEN("CREATE TABLE nakatani_test (a INT)"), system_charset_info);  // ENGINE=MYSQLITEと言わないでいいのかね? -> 何故かおkだった
-
-  if (!b)
-    b= table_s->init_from_sql_statement_string(thd, true,
-                                               sql.ptr(), sql.length());
-  return b;
+    // Create tables
+    for (int i = 0; i < table_names.size(); ++i) {
+      b = table_s->init_from_sql_statement_string(thd, true,
+                                                  ddls[i].c_str(), ddls[i].size());
+      if (b) {
+        log_msg("Error in creating table: %s\n", ddls[i].c_str());
+        return b;
+      }
+    }
+  }
+  return 0;
 }
 #endif //MARIADB
 

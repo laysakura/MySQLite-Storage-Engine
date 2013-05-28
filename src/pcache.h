@@ -122,15 +122,15 @@ private:
   /**
    * Hash function to map SQLite DB page number -> pcache number
    */
- private:
+  private:
   Pgno pgno_to_pcacheno(Pgno pgno) const {
     if (pgno == 1) return 0;  // page#1 should be always on pcache
     return 1 + (pgno - 2) % n_pg;
   }
 
- private:
+private:
   // Prohibit any way to create instance from outsiders
- PageCache()
+  PageCache()
    : pcache_sz(0), n_pg(0), pgsz(0),
     the_cache(NULL), pcache_idx(NULL), f_db(NULL)
     {}

@@ -27,7 +27,8 @@ using namespace std;
 #include <sql_priv.h>
 #include <sql_class.h>
 
-bool copy_sqlite_table_formats(/* out */
+bool copy_sqlite_table_formats(const char * const path,
+                               /* out */
                                vector<string> &table_names,
                                vector<string> &ddls)
 {
@@ -65,8 +66,8 @@ bool dup_table_schema()
 
   { // Duplicate SQLite DDLs to MySQL
     vector<string> table_names, ddls;
-    if (!copy_sqlite_table_formats(table_names, ddls))
-      goto err_ret;
+    // if (!copy_sqlite_table_formats(table_names, ddls))
+    //   goto err_ret;
 
     // Drop all tables defined in SQLite DB first (for updating .FRM)
     for (vector<string>::iterator it = table_names.begin();
