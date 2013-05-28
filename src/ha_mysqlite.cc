@@ -89,7 +89,8 @@
     -Brian
 */
 
-#undef SAFE_MUTEX
+#undef SAFE_MUTEX  // TODO: Necessary to use correct TABLE_SHARE::LOCK_ha_data->m_mutex.
+                   // TODO: But should not be undefed.
 #include "ha_mysqlite.h"
 #include "pcache.h"
 #include "utils.h"
