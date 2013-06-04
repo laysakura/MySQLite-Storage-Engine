@@ -92,8 +92,8 @@ TEST(CheckAllData, SmallData)
     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
     ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
-    const char *name = rows->get_text(1);
-    ASSERT_STREQ("Shonan Gold", name);
+    string name = rows->get_text(1);
+    ASSERT_STREQ("Shonan Gold", name.c_str());
 
     int price = rows->get_int(2);
     ASSERT_EQ(price, 450);
@@ -104,8 +104,8 @@ TEST(CheckAllData, SmallData)
     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
     ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
-    const char *name = rows->get_text(1);
-    ASSERT_STREQ("Ebisu", name);
+    string name = rows->get_text(1);
+    ASSERT_STREQ("Ebisu", name.c_str());
 
     int price = rows->get_int(2);
     ASSERT_EQ(price, 320);
@@ -115,119 +115,119 @@ TEST(CheckAllData, SmallData)
   conn.close();
 }
 
-TEST(CheckAllData, SmallData_jp)
-{
-  using namespace mysqlite;
+// TEST(CheckAllData, SmallData_jp)
+// {
+//   using namespace mysqlite;
 
-  Connection conn;
-  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small-jp.sqlite");
-  ASSERT_EQ(res, MYSQLITE_OK);
+//   Connection conn;
+//   errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small-jp.sqlite");
+//   ASSERT_EQ(res, MYSQLITE_OK);
 
-  RowCursor *rows = conn.table_fullscan("Beer");
-  ASSERT_TRUE(rows);
+//   RowCursor *rows = conn.table_fullscan("Beer");
+//   ASSERT_TRUE(rows);
 
-  { // 1st row
-    ASSERT_TRUE(rows->next());
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_INTEGER);
+//   { // 1st row
+//     ASSERT_TRUE(rows->next());
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(1), MYSQLITE_INTEGER);
 
-    const char *name = rows->get_text(0);
-    ASSERT_STREQ("湘南ゴールド", name);
+//     const char *name = rows->get_text(0);
+//     ASSERT_STREQ("湘南ゴールド", name);
 
-    int price = rows->get_int(1);
-    ASSERT_EQ(price, 450);
-  }
-  { // 2nd row
-    ASSERT_TRUE(rows->next());
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_INTEGER);
+//     int price = rows->get_int(1);
+//     ASSERT_EQ(price, 450);
+//   }
+//   { // 2nd row
+//     ASSERT_TRUE(rows->next());
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(1), MYSQLITE_INTEGER);
 
-    const char *name = rows->get_text(0);
-    ASSERT_STREQ("リバティーエール", name);
+//     const char *name = rows->get_text(0);
+//     ASSERT_STREQ("リバティーエール", name);
 
-    int price = rows->get_int(1);
-    ASSERT_EQ(price, 500);
-  }
-  ASSERT_FALSE(rows->next());
+//     int price = rows->get_int(1);
+//     ASSERT_EQ(price, 500);
+//   }
+//   ASSERT_FALSE(rows->next());
 
-  rows->close();
-  conn.close();
-}
+//   rows->close();
+//   conn.close();
+// }
 
-TEST(OverflowPage, Wikipedia)
-{
-  using namespace mysqlite;
+// TEST(OverflowPage, Wikipedia)
+// {
+//   using namespace mysqlite;
 
-  Connection conn;
-  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/wikipedia.sqlite");
-  ASSERT_EQ(res, MYSQLITE_OK);
+//   Connection conn;
+//   errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/wikipedia.sqlite");
+//   ASSERT_EQ(res, MYSQLITE_OK);
 
-  RowCursor *rows = conn.table_fullscan("ICTCompany");
-  ASSERT_TRUE(rows);
+//   RowCursor *rows = conn.table_fullscan("ICTCompany");
+//   ASSERT_TRUE(rows);
 
-  { // 1st row
-    rows->next();
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
-    ASSERT_STREQ(rows->get_text(0), "http://en.wikipedia.org/wiki/Google");
-    string content(rows->get_text(1));
-    ASSERT_EQ(content.size(), 3395u);
-  }
-  { // 2nd row
-    rows->next();
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
-    ASSERT_STREQ(rows->get_text(0), "http://en.wikipedia.org/wiki/Facebook");
-    string content(rows->get_text(1));
-    ASSERT_EQ(content.size(), 3670u);
-  }
-  ASSERT_FALSE(rows->next());
+//   { // 1st row
+//     rows->next();
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+//     ASSERT_STREQ(rows->get_text(0), "http://en.wikipedia.org/wiki/Google");
+//     string content(rows->get_text(1));
+//     ASSERT_EQ(content.size(), 3395u);
+//   }
+//   { // 2nd row
+//     rows->next();
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+//     ASSERT_STREQ(rows->get_text(0), "http://en.wikipedia.org/wiki/Facebook");
+//     string content(rows->get_text(1));
+//     ASSERT_EQ(content.size(), 3670u);
+//   }
+//   ASSERT_FALSE(rows->next());
 
-  rows->close();
-  conn.close();
-}
+//   rows->close();
+//   conn.close();
+// }
 
-TEST(LongerThan2pow16, Wikipedia)
-{
-  using namespace mysqlite;
+// TEST(LongerThan2pow16, Wikipedia)
+// {
+//   using namespace mysqlite;
 
-  Connection conn;
-  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/wikipedia.sqlite");
-  ASSERT_EQ(res, MYSQLITE_OK);
+//   Connection conn;
+//   errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/wikipedia.sqlite");
+//   ASSERT_EQ(res, MYSQLITE_OK);
 
-  RowCursor *rows = conn.table_fullscan("Alcohol");
-  ASSERT_TRUE(rows);
+//   RowCursor *rows = conn.table_fullscan("Alcohol");
+//   ASSERT_TRUE(rows);
 
-  { // 1st row, whose content has 66105 bytes (the figure is larger than 2^16 = 65536)
-    rows->next();
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
-    ASSERT_STREQ(rows->get_text(0), "http://en.wikipedia.org/wiki/Beer");
-    string content(rows->get_text(1));
-    ASSERT_EQ(content.size(), 66234u);
-  }
+//   { // 1st row, whose content has 66105 bytes (the figure is larger than 2^16 = 65536)
+//     rows->next();
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+//     ASSERT_STREQ(rows->get_text(0), "http://en.wikipedia.org/wiki/Beer");
+//     string content(rows->get_text(1));
+//     ASSERT_EQ(content.size(), 66234u);
+//   }
 
-  rows->close();
-  conn.close();
-}
+//   rows->close();
+//   conn.close();
+// }
 
-TEST(ST_C0_and_ST_C1, TableLeafPage_int)
-{
-  using namespace mysqlite;
+// TEST(ST_C0_and_ST_C1, TableLeafPage_int)
+// {
+//   using namespace mysqlite;
 
-  Connection conn;
-  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/TableLeafPage-int.sqlite");
-  ASSERT_EQ(res, MYSQLITE_OK);
+//   Connection conn;
+//   errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/TableLeafPage-int.sqlite");
+//   ASSERT_EQ(res, MYSQLITE_OK);
 
-  RowCursor *rows = conn.table_fullscan("t1");
-  ASSERT_TRUE(rows);
+//   RowCursor *rows = conn.table_fullscan("t1");
+//   ASSERT_TRUE(rows);
 
-  { // 1st row
-    rows->next();
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_INTEGER);
-    ASSERT_EQ(rows->get_int(0), 1);  // This is represented as ST_C1 internally
-  }
+//   { // 1st row
+//     rows->next();
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_INTEGER);
+//     ASSERT_EQ(rows->get_int(0), 1);  // This is represented as ST_C1 internally
+//   }
 
-  rows->close();
-  conn.close();
-}
+//   rows->close();
+//   conn.close();
+// }

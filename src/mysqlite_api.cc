@@ -52,9 +52,9 @@ RowCursor *Connection::table_fullscan(const char * const table)
     // Find root pgno of table from sqlite_master.
     RowCursor *sqlite_master_rows = table_fullscan(SQLITE_MASTER_ROOTPGNO);
     while (sqlite_master_rows->next()) {
-      const char *tbl_name =
+      string tbl_name =
         sqlite_master_rows->get_text(SQLITE_MASTER_COLNO_TBL_NAME);
-      if (0 == strcmp(table, tbl_name)) {
+      if (0 == strcmp(table, tbl_name.c_str())) {
         root_pgno = sqlite_master_rows->get_int(SQLITE_MASTER_COLNO_ROOTPAGE);
         break;
       }
@@ -63,6 +63,7 @@ RowCursor *Connection::table_fullscan(const char * const table)
       log_errstat(MYSQLITE_NO_SUCH_TABLE);
       return NULL;
     }
+    sqlite_master_rows->close();
   }
 
   return table_fullscan(root_pgno);
@@ -130,7 +131,7 @@ int RowCursor::get_int(int colno) const
                            cell.payload.cols_len[colno]);
   }
 }
-const char *RowCursor::get_text(int colno) const
+string RowCursor::get_text(int colno) const
 {
   // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
@@ -146,9 +147,8 @@ const char *RowCursor::get_text(int colno) const
   }
 
   // TODO: Cache... now memory leak
-  string *ret = new string((char *)&cell.payload.data[cell.payload.cols_offset[colno]],
-                           cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい
-  return ret->c_str();
+  return string((char *)&cell.payload.data[cell.payload.cols_offset[colno]],
+                cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい
 }
 
 

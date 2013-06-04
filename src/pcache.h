@@ -69,7 +69,7 @@ private:
       fclose(f_db);
       f_db = NULL;
     }
-    delete the_cache;
+    delete [] the_cache;
   }
 
   /**
