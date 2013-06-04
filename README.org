@@ -1,3 +1,40 @@
 * MySQLite Storage Engine
   MySQLite Storage Engine is a MySQL storage engine that aims to read/write SQLite database files.
   Currently it does not fully work.
+
+** Current feature
+   - Fullscan support
+     - Some
+
+** Installation
+   Checked with:
+   - CentOS release 5.9 (Final)
+   - gcc (GCC) 4.1.2 20080704 (Red Hat 4.1.2-54)
+
+*** Build MariaDB with MySQLite
+   #+BEGIN_SRC sh
+$ cd mariadb-%VERSION%/storage
+$ git clone git://github.com/laysakura/MySQLite-Storage-Engine.git mysqlite
+$ cd ..
+$ cmake  # Use -DCMAKE_INSTALL_PREFIX=/path/to/basedir -DMYSQL_DATADIR=/path/to/datadir if necessary
+$ make && make install
+   #+END_SRC
+
+*** Launch mysqld
+   #+BEGIN_SRC sh
+$ /path/to/basedir/scripts/mysql_install_db  # Use --basedir=/path/to/basedir --datadir=/path/to/datadir if necessary
+$ ~/local/mariadb-10.0.2/bin/mysqld --defaults-file=/path/to/my.cnf
+   #+END_SRC
+
+*** Install MySQLite
+   #+BEGIN_SRC sh
+$ cd mariadb-%VERSION%/storage/mysqlite
+$ mysql --defaults-file=/path/to/my.cnf -uroot < support-files/install.sql
+   #+END_SRC
+
+*** Test MySQLite
+    Create database and user before running tests if necessary.
+   #+BEGIN_SRC sh
+$ DB=user_db CNF=/path/to/my.cnf DBI_USER=user DBI_PASSWORD=password  ./run_tests.pl
+   #+END_SRC
+    *Currently, t/05 and t/06 do not pass.*
