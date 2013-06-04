@@ -16,8 +16,10 @@ use File::Basename;
 use Cwd 'realpath';
 my $testdir = realpath(dirname(__FILE__));
 
+my $db = $ENV{DB} || "test";
+my $cnf = $ENV{CNF} || "/etc/my.cnf";
 my $dbh = DBI->connect(
-    $ENV{DBI} || 'dbi:mysql:database=test;host=localhost',
+    $ENV{DBI} || "dbi:mysql:$db;mysql_read_default_file=$cnf",
     $ENV{DBI_USER} || 'root',
     $ENV{DBI_PASSWORD} || '',
 ) or die 'connection failed:';
