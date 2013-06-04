@@ -415,6 +415,7 @@ ha_mysqlite::ha_mysqlite(handlerton *hton, TABLE_SHARE *table_arg)
 }
 
 
+#ifndef MARIADB
 /*
   Following handler function provides access to
   system database specific to SE. This interface
@@ -425,6 +426,7 @@ const char* mysqlite_system_database()
 {
   return ha_mysqlite_system_database;
 }
+#endif // MARIADB
 
 /*
   List of all system tables specific to the SE.
