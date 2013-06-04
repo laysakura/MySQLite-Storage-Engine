@@ -23,9 +23,10 @@ errstat Connection::open(const char * const db_path)
 
   if (res == MYSQLITE_OK || res == MYSQLITE_DB_FILE_NOT_FOUND) {
     // succeeded in opening db_path (read-mode or write-mode)
-    this->db_path = db_path;
+    is_opened_flag = true;
   } else {
     // failed in opening db_path
+    is_opened_flag = false;
     log_errstat(res);
   }
   return res;
@@ -33,12 +34,12 @@ errstat Connection::open(const char * const db_path)
 
 bool Connection::is_opened() const
 {
-  return this->db_path != "";
+  return is_opened_flag;
 }
 
 void Connection::close()
 {
-  this->db_path = "";
+  is_opened_flag = false;
 }
 
 RowCursor *Connection::table_fullscan(const char * const table)

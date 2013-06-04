@@ -1249,7 +1249,7 @@ bool copy_sqlite_table_formats(/* out */
 #ifdef MARIADB
 /**
   @brief
-  mysqlite_assisted_discovery() is called when creating a table with no columns.
+  mysqlite_assisted_discovery() is called when issueing CREATE TABLE with no columns.
 
   @details
   When assisted discovery is used the .frm file have not already been
@@ -1271,6 +1271,7 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
     log_errstat(MYSQLITE_OUT_OF_MEMORY);
     return 1;
   }
+  if (share->conn.is_opened()) share->conn.close();
   errstat res = share->conn.open(path);
   if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
     // Newly create SQLite database file

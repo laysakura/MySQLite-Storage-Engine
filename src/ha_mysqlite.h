@@ -56,7 +56,7 @@ public:
 };
 
 /** @brief
-  Example_share is a class that will be shared among all open handlers.
+  Mysqlite_share is a class that will be shared among all open handlers.
   This example implements the minimum of what you will probably need.
 */
 class Mysqlite_share : public Handler_share {

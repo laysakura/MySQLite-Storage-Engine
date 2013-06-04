@@ -93,11 +93,11 @@ class FullscanCursor : public RowCursor {
 */
 class Connection {
 private:
-  string db_path;
+  bool is_opened_flag;
 
   public:
   Connection()
-    : db_path("")
+    : is_opened_flag(false)
   {}
 
   /*
