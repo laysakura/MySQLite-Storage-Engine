@@ -4,7 +4,7 @@
 
 ** Current feature
    - Fullscan support
-     - Some
+     - Some CPU-intensive queries like GROUP BY and ORDER BY are faster than SQLite.
 
 ** Installation
    Checked with:
