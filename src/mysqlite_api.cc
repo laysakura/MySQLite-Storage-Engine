@@ -13,12 +13,17 @@ errstat Connection::open(const char * const db_path)
 {
   errstat res;
 
+  if (is_opened()) {
+    return MYSQLITE_CONNECTION_ALREADY_OPEN;
+  }
+
   // Page cache
   PageCache *pcache = PageCache::get_instance();
   res = pcache->refresh(db_path);
 
   if (res == MYSQLITE_OK || res == MYSQLITE_DB_FILE_NOT_FOUND) {
     // succeeded in opening db_path (read-mode or write-mode)
+    this->db_path = db_path;
   } else {
     // failed in opening db_path
     log_errstat(res);
@@ -28,12 +33,12 @@ errstat Connection::open(const char * const db_path)
 
 bool Connection::is_opened() const
 {
-  PageCache *pcache = PageCache::get_instance();
-  return pcache->is_ready();
+  return this->db_path != "";
 }
 
 void Connection::close()
 {
+  this->db_path = "";
 }
 
 RowCursor *Connection::table_fullscan(const char * const table)

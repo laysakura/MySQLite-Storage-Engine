@@ -26,6 +26,29 @@ public:
 ::testing::Environment* const ma_env = ::testing::AddGlobalTestEnvironment(new mysqlite_apiEnvironment);
 
 
+TEST(Connection, is_opened)
+{
+  using namespace mysqlite;
+  errstat res;
+  Connection conn;
+
+  // no connection is opened yet
+  ASSERT_FALSE(conn.is_opened());
+
+  // connection to valid db is opend
+  res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
+  ASSERT_EQ(res, MYSQLITE_OK);
+  ASSERT_TRUE(conn.is_opened());
+
+  // connection is already opened
+  res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small-jp.sqlite");
+  ASSERT_EQ(res, MYSQLITE_CONNECTION_ALREADY_OPEN);
+
+  // connection is closed
+  conn.close();
+  ASSERT_FALSE(conn.is_opened());
+}
+
 TEST(TypicalUsage, SmallData)
 {
   using namespace mysqlite;

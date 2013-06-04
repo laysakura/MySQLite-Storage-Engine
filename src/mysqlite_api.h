@@ -92,14 +92,19 @@ class FullscanCursor : public RowCursor {
 ** Open a connection to a database
 */
 class Connection {
+private:
+  string db_path;
+
   public:
-  Connection() {}
+  Connection()
+    : db_path("")
+  {}
 
   /*
   ** Open a connection to a db
   **
   ** @note
-  ** Connection::close() must be used to the returned instance.
+  ** Connection::close() must be used afterwards.
   */
   public:
   errstat open(const char * const db_path);
