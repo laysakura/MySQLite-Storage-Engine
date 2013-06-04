@@ -82,10 +82,10 @@ TEST(CheckAllData, SmallData)
     ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
     const char *name = rows->get_text(1);
-    ASSERT_STREQ("Liberty Ale", name);
+    ASSERT_STREQ("Ebisu", name);
 
     int price = rows->get_int(2);
-    ASSERT_EQ(price, 500);
+    ASSERT_EQ(price, 320);
   }
 
   rows->close();
