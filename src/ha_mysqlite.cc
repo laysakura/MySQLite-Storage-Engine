@@ -110,10 +110,12 @@ static handler *mysqlite_create_handler(handlerton *hton,
 handlerton *mysqlite_hton;
 
 /* Interface to mysqld, to check system tables supported by SE */
+#ifndef MARIADB
 static const char* mysqlite_system_database();
 static bool mysqlite_is_supported_system_table(const char *db,
                                       const char *table_name,
                                       bool is_sql_layer_system_table);
+#endif // MARIADB
 
 static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
                                        TABLE_SHARE *table_s,
@@ -827,8 +829,8 @@ int ha_mysqlite::find_current_row(uchar *buf)
         break;
       case MYSQLITE_TEXT:
         {
-          const char *s = rows->get_text(colno);
-          (*field)->store(s, strlen(s), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
+          string s = rows->get_text(colno);
+          (*field)->store(s.c_str(), s.size(), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
         }
         break;
       default:
