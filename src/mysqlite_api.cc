@@ -107,7 +107,7 @@ int Connection::rdlock_db()
     flock.l_type = F_RDLCK;
     fcntl(fileno(f_db), F_SETLKW, &flock);  // always returns 0
 
-    log_msg("Connection::rdlock_db(): Thread#%lu locks db file",
+    log_msg("Connection::rdlock_db(): Thread#%lu locks db file\n",
             pthread_self());
   }
   return 0;
@@ -126,7 +126,7 @@ int Connection::unlock_db()
     flock.l_type = F_UNLCK;
     fcntl(fileno(f_db), F_SETLKW, &flock);  // always returns 0
 
-    log_msg("Connection::rdlock_db(): Thread#%lu locks db file",
+    log_msg("Connection::rdlock_db(): Thread#%lu locks db file\n",
             pthread_self());
   }
 
