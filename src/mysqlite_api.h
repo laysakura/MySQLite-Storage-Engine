@@ -94,10 +94,14 @@ class FullscanCursor : public RowCursor {
 class Connection {
 private:
   bool is_opened_flag;
+  unsigned int refcnt_rdlock_db;
+  FILE *f_db;   // TODO: handler socket とかからMAIIなファイルオブジェクトパクる
 
   public:
   Connection()
-    : is_opened_flag(false)
+    : is_opened_flag(false),
+      refcnt_rdlock_db(0),
+      f_db(NULL)
   {}
 
   /*
@@ -126,6 +130,24 @@ private:
   RowCursor *table_fullscan(const char * const table);
   private:
   RowCursor *table_fullscan(Pgno tbl_root);
+
+  /*
+    Read lock to SQLite DB file.
+    Thread safe functions.
+
+    @returns HA_*
+   */
+  public:
+  int rdlock_db();
+
+  /*
+    Unlock to SQLite DB file.
+    Thread safe functions.
+
+    @returns HA_*
+   */
+  public:
+  int unlock_db();
 };
 
 

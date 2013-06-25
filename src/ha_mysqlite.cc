@@ -1029,7 +1029,35 @@ int ha_mysqlite::truncate()
 int ha_mysqlite::external_lock(THD *thd, int lock_type)
 {
   DBUG_ENTER("ha_mysqlite::external_lock");
-  DBUG_RETURN(0);
+
+  int res = 0;
+
+  // TODO:
+  // CREATE TABLE ... FILE_NAME='...' ...;
+  // によってConnectionが開かれていない場合でも，external_lock()は呼ばれる．
+  // その際，何の排他もしないで本当に大丈夫か？
+  // 守りたいものはDBファイル．付随的に，そのコピーたるpcacheや，DBファイル|pcacheの状態を表すフラグなども守る．
+  // そう考えると，未だDBファイルが開かれていない場合では排他制御は必要ない気がしているが・・・
+  Mysqlite_share *share = Mysqlite_share::get_share();
+  if (!share) {
+    log_errstat(MYSQLITE_OUT_OF_MEMORY);
+    return 1;  // TODO: ここら辺の返り値もしっかりしないとな・・・
+  }
+  if (!share->conn.is_opened()) return 0;
+
+  if (lock_type == F_RDLCK) {
+    log_msg("ha_mysqlite::external_lock: Thread#%lu acquires read lock\n", pthread_self());
+    res = share->conn.rdlock_db();
+  }
+  else if (lock_type == F_UNLCK) {
+    log_msg("ha_mysqlite::external_lock: Thread#%lu releases its lock\n", pthread_self());
+    res = share->conn.unlock_db();
+  }
+  else if (lock_type == F_WRLCK) {
+    // TODO: update support
+  }
+
+  DBUG_RETURN(res);
 }
 
 

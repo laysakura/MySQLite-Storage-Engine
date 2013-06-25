@@ -1,5 +1,6 @@
 using namespace std;
 #include <string>
+#include <fcntl.h>
 #include "mysqlite_api.h"
 #include "pcache.h"
 
@@ -17,18 +18,35 @@ errstat Connection::open(const char * const db_path)
     return MYSQLITE_CONNECTION_ALREADY_OPEN;
   }
 
-  // Page cache
-  PageCache *pcache = PageCache::get_instance();
-  res = pcache->refresh(db_path);
+  if (f_db) {
+    fclose(f_db);
+    f_db = NULL;
+  }
+  f_db = open_sqlite_db(db_path, &res);
 
-  if (res == MYSQLITE_OK || res == MYSQLITE_DB_FILE_NOT_FOUND) {
-    // succeeded in opening db_path (read-mode or write-mode)
+  if (res == MYSQLITE_OK) {
+    // DB file exists on db_path
+    is_opened_flag = true;
+  } else if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
+    // TODO: Newly creating database file
     is_opened_flag = true;
   } else {
+    // error
+    log_errstat(res);
+    return res;
+  }
+
+  // Page cache
+  PageCache *pcache = PageCache::get_instance();
+  res = pcache->refresh(f_db);
+
+  if (res == MYSQLITE_OK) {
+    // succeeded in opening db_path (read-mode or write-mode)
+  } else {
     // failed in opening db_path
-    is_opened_flag = false;
     log_errstat(res);
   }
+
   return res;
 }
 
@@ -75,6 +93,44 @@ RowCursor *Connection::table_fullscan(const char * const table)
 RowCursor *Connection::table_fullscan(Pgno tbl_root)
 {
   return new FullscanCursor(tbl_root);
+}
+
+int Connection::rdlock_db()
+{
+  unsigned int refcnt = __sync_fetch_and_add(&refcnt_rdlock_db, 1);
+  if (refcnt == 0) {
+    // first thread requests lock
+    struct flock flock;
+    flock.l_whence = SEEK_SET;
+    flock.l_start = 0;
+    flock.l_len = 0;
+    flock.l_type = F_RDLCK;
+    fcntl(fileno(f_db), F_SETLKW, &flock);  // always returns 0
+
+    log_msg("Connection::rdlock_db(): Thread#%lu locks db file",
+            pthread_self());
+  }
+  return 0;
+}
+
+int Connection::unlock_db()
+{
+  unsigned int refcnt = __sync_fetch_and_sub(&refcnt_rdlock_db, 1);
+  assert(refcnt > 0);
+  if (refcnt == 1) {
+    // last thread requests lock
+    struct flock flock;
+    flock.l_whence = SEEK_SET;
+    flock.l_start = 0;
+    flock.l_len = 0;
+    flock.l_type = F_UNLCK;
+    fcntl(fileno(f_db), F_SETLKW, &flock);  // always returns 0
+
+    log_msg("Connection::rdlock_db(): Thread#%lu locks db file",
+            pthread_self());
+  }
+
+  return 0;
 }
 
 

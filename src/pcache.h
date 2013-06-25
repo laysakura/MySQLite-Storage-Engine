@@ -42,7 +42,7 @@ private:
    * Called when new SQLite DB is attached
    */
   public:
-  errstat refresh(const char * const db_path);
+  errstat refresh(FILE *f_db);
 
   /**
    * Allocate heap

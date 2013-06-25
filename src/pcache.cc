@@ -5,35 +5,18 @@
 /***********************************************************************
  ** PageCache class
  ***********************************************************************/
-errstat PageCache::refresh(const char * const db_path)
+errstat PageCache::refresh(FILE *f_db)  // TODO: MAIIなファイルオブジェクト
 {
-  errstat res;
+  this->f_db = f_db;
 
-  if (f_db) {
-    fclose(f_db);
-    f_db = NULL;
-  }
-  f_db = open_sqlite_db(db_path, &res);
+  errstat res = MYSQLITE_OK;
 
-  if (res == MYSQLITE_OK) {
-    // DB file exists on db_path
-
-    // Check page size of db_path.
-    // Note that pcache(0) does not have page#1 data yet.
-    // Directly read DB file.
-    u8 pgsz_data[DBHDR_PGSZ_LEN];
-    mysqlite_fread(pgsz_data, DBHDR_PGSZ_OFFSET, DBHDR_PGSZ_LEN, f_db);
-    pgsz = u8s_to_val<Pgsz>(pgsz_data, DBHDR_PGSZ_LEN);
-  } else if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
-    // Newly creating database file
-
-    // Decide page size
-    // TODO: how to change page size?
-    pgsz = PAGE_MIN_SZ;
-  } else {
-    // error
-    return res;
-  }
+  // Check page size of db_path.
+  // Note that pcache(0) does not have page#1 data yet.
+  // Directly read DB file.
+  u8 pgsz_data[DBHDR_PGSZ_LEN];
+  mysqlite_fread(pgsz_data, DBHDR_PGSZ_OFFSET, DBHDR_PGSZ_LEN, f_db);
+  pgsz = u8s_to_val<Pgsz>(pgsz_data, DBHDR_PGSZ_LEN);
 
   // 0-fill memory
   n_pg = (pcache_sz / pgsz) + 1;
