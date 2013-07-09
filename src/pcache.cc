@@ -7,7 +7,8 @@
  ***********************************************************************/
 errstat PageCache::refresh(FILE *f_db)  // TODO: MAIIなファイルオブジェクト
 {
-  if (this->f_db) {
+  assert(f_db);
+  if (this->f_db && this->f_db != f_db) {
     fclose(this->f_db);
   }
   this->f_db = f_db;
@@ -23,7 +24,7 @@ errstat PageCache::refresh(FILE *f_db)  // TODO: MAIIなファイルオブジェ
 
   // 0-fill memory
   n_pg = (pcache_sz / pgsz) + 1;
-  memset(the_cache, 0, pcache_sz + pcache_idx_sz());
+  memset(pcache_idx, 0, pcache_idx_sz());
 
   // Put DB page#1 onto pcache(0)
   pcache_idx[0] = SQLITE_MASTER_ROOTPGNO;

@@ -35,3 +35,29 @@ TEST(pcache, SmallerPageCacheThanDbFile)
 
   pcache->free();
 }
+
+TEST(pcache, refresh)
+{
+  errstat res;
+  PageCache *pcache = PageCache::get_instance();
+  pcache->alloc(1024 * 100);
+
+  u8 first_page2[1024], second_page2[1024];
+
+  FILE *f = fopen(MYSQLITE_TEST_DB_DIR "/TableLeafPage-2tables.sqlite", "r");
+
+  { // 1st fetch
+    res = pcache->refresh(f);
+    ASSERT_EQ(res, MYSQLITE_OK);
+    memcpy(first_page2, pcache->fetch(2), 1024);
+  }
+  { // 2nd fetch
+    res = pcache->refresh(f);
+    ASSERT_EQ(res, MYSQLITE_OK);
+    memcpy(second_page2, pcache->fetch(2), 1024);
+  }
+
+  ASSERT_EQ(memcmp(first_page2, second_page2, 1024), 0);
+
+  pcache->free();
+}
