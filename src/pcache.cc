@@ -7,6 +7,9 @@
  ***********************************************************************/
 errstat PageCache::refresh(FILE *f_db)  // TODO: MAIIなファイルオブジェクト
 {
+  if (this->f_db) {
+    fclose(this->f_db);
+  }
   this->f_db = f_db;
 
   errstat res = MYSQLITE_OK;
