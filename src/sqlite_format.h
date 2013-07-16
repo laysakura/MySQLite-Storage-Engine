@@ -145,6 +145,12 @@ class DbHeader {
   public:
   static Pgsz get_reserved_space();
 
+  public:
+  static u16 get_file_change_counter();
+
+  public:
+  static errstat inc_file_change_counter();
+
 private:
   // Prohibit any way to create instance
   DbHeader();

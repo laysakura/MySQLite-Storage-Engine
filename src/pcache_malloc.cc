@@ -1,4 +1,4 @@
-#include "pcache.h"
+#include "pcache_malloc.h"
 #include "sqlite_format.h"
 
 
