@@ -40,7 +40,6 @@ TEST(pcache, lock)
   ASSERT_GE(fcc2, fcc);
 
   printf("fcc=%d, fcc2=%d\n", fcc, fcc2);
-  sleep(10);
 
   ASSERT_EQ(MYSQLITE_FLOCK_NEEDED, DbHeader::inc_file_change_counter()); // write lock is necessary
 
