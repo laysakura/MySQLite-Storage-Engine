@@ -5,25 +5,7 @@ using namespace std;
 
 #include "../mysqlite_api.h"
 #include "../sqlite_format.h"
-#include "../pcache.h"
 #include "../mysqlite_config.h"
-
-
-/**
- * Materialize page cache
- */
-class mysqlite_apiEnvironment : public ::testing::Environment {
-public:
-  void SetUp() {
-    PageCache *pcache = PageCache::get_instance();
-    pcache->alloc(1024 * 100);
-  }
-  void TearDown() {
-    PageCache *pcache = PageCache::get_instance();
-    pcache->free();
-  }
-};
-::testing::Environment* const ma_env = ::testing::AddGlobalTestEnvironment(new mysqlite_apiEnvironment);
 
 
 TEST(Connection, is_opened)
@@ -57,6 +39,7 @@ TEST(TypicalUsage, SmallData)
   errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
+  conn.rdlock_db();
   RowCursor *rows = conn.table_fullscan("Beer");
   ASSERT_TRUE(rows);
 
@@ -70,6 +53,7 @@ TEST(TypicalUsage, SmallData)
     ASSERT_GE(price, 100);
     ASSERT_LE(price, 1500);
   }
+  conn.unlock_db();
 
   rows->close();
   conn.close();
@@ -83,6 +67,7 @@ TEST(CheckAllData, SmallData)
   errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
   ASSERT_EQ(res, MYSQLITE_OK);
 
+  conn.rdlock_db();
   RowCursor *rows = conn.table_fullscan("Beer");
   ASSERT_TRUE(rows);
 
@@ -110,6 +95,7 @@ TEST(CheckAllData, SmallData)
     int price = rows->get_int(2);
     ASSERT_EQ(price, 320);
   }
+  conn.unlock_db();
 
   rows->close();
   conn.close();

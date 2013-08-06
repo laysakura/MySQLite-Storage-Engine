@@ -83,8 +83,8 @@ int Connection::rdlock_db()
 {
   PageCache *pcache = PageCache::get_instance();
   pcache->rd_lock();
-  log_msg("Connection::rdlock_db(): Thread#%lu locks db file\n",
-          pthread_self());
+  // log_msg("Connection::rdlock_db(): Thread#%lu locks db file\n",
+  //         pthread_self());
   return 0;
 }
 
@@ -92,8 +92,8 @@ int Connection::unlock_db()
 {
   PageCache *pcache = PageCache::get_instance();
   pcache->unlock();
-  log_msg("Connection::unlock_db(): Thread#%lu unlocks db file\n",
-          pthread_self());
+  // log_msg("Connection::unlock_db(): Thread#%lu unlocks db file\n",
+  //         pthread_self());
   return 0;
 }
 
