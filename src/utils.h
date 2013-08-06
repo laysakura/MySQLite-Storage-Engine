@@ -68,6 +68,9 @@ using namespace std;
     case_log_errstat(MYSQLITE_NO_SUCH_TABLE, "No such table\n");         \
     case_log_errstat(MYSQLITE_IO_ERR, "File IO error\n");                \
     case_log_errstat(MYSQLITE_DB_FILE_NOT_FOUND, "DB file is not found\n"); \
+    case_log_errstat(MYSQLITE_OUT_OF_MEMORY, "Out of memory\n");        \
+    case_log_errstat(MYSQLITE_CONNECTION_ALREADY_OPEN, "Connection is already open\n"); \
+    case_log_errstat(MYSQLITE_FLOCK_NEEDED, "File lock is necessary\n");        \
                                                                         \
     default:                                                            \
       log_msg("!!! errstat=%d has no corresponding message !!!\n", errstat); \

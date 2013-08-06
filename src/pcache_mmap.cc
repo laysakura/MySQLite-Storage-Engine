@@ -30,6 +30,7 @@ errstat PageCache::open(const char * const path)
   if (res != MYSQLITE_OK) {
     perror("open");
     log_errstat(res);
+    pthread_mutex_unlock(&mutex);
     return res;
   }
 
