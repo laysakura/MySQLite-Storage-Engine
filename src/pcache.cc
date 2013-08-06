@@ -9,7 +9,8 @@ errstat PageCache::refresh(FILE *f_db)  // TODO: MAIIなファイルオブジェ
 {
   assert(f_db);
   if (this->f_db && this->f_db != f_db) {
-    fclose(this->f_db);
+    // fclose(this->f_db);  // TODO: fclose()するとdouble freeになる．
+                            // TODO: refresh()ってのを呼ばないとcloseされないのってそもそもどうなの
   }
   this->f_db = f_db;
 
