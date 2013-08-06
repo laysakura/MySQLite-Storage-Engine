@@ -17,8 +17,6 @@ namespace mysqlite {
 */
 class RowCursor {
 protected:
-  FILE *f_db;
-
   vector<BtreePathNode> visit_path;  // Save the history of traversal.
                // Example:
                //
@@ -93,14 +91,12 @@ class FullscanCursor : public RowCursor {
 */
 class Connection {
 private:
-  bool is_opened_flag;
   unsigned int refcnt_rdlock_db;
   FILE *f_db;   // TODO: handler socket とかからMAIIなファイルオブジェクトパクる
 
   public:
   Connection()
-    : is_opened_flag(false),
-      refcnt_rdlock_db(0),
+    : refcnt_rdlock_db(0),
       f_db(NULL)
   {}
 

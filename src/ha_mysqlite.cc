@@ -315,8 +315,6 @@ static int mysqlite_init_func(void *p)
 #endif //MARIADB
 
   // Page cache
-  PageCache *pcache = PageCache::get_instance();
-  pcache->alloc(MYSQLITE_PCACHE_SZ);
 
   DBUG_RETURN(0);
 }
@@ -327,8 +325,6 @@ static int mysqlite_done_func(void *p)
   mysql_mutex_destroy(&mysqlite_mutex);
 
   // Page cache
-  PageCache *pcache = PageCache::get_instance();
-  pcache->free();
 
   return 0;
 }
@@ -405,7 +401,7 @@ int Mysqlite_share::free_share(Mysqlite_share *share)
 }
 
 static handler* mysqlite_create_handler(handlerton *hton,
-                                       TABLE_SHARE *table, 
+                                       TABLE_SHARE *table,
                                        MEM_ROOT *mem_root)
 {
   return new (mem_root) ha_mysqlite(hton, table);
@@ -1301,7 +1297,7 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
     log_errstat(MYSQLITE_OUT_OF_MEMORY);
     return 1;
   }
-  if (share->conn.is_opened()) share->conn.close();
+  if (share->conn.is_opened()) share->conn.close();  // TODO: 2つ以上create tableするとおかしくなるね
   errstat res = share->conn.open(path);
   if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
     // Newly create SQLite database file
@@ -1318,11 +1314,16 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
 
   assert(is_existing_db);  // TODO: support new creation of db files
   if (is_existing_db) {
+    PageCache *pcache = PageCache::get_instance();
+    pcache->rd_lock();
+
     // Duplicate SQLite DDLs to MySQL
     // TODO: ここで，TABLE_SHARE::table_name に入ってるDDLだけをsqlite_masterから取り出す必要がある
     vector<string> table_names, ddls;
-    if (!copy_sqlite_table_formats(table_names, ddls))
-      return HA_ERR_INTERNAL_ERROR;
+    bool res2 = copy_sqlite_table_formats(table_names, ddls);
+    pcache->unlock();
+
+    if (!res2) return HA_ERR_INTERNAL_ERROR;
 
     // Create requested table
     string *ddl = NULL;

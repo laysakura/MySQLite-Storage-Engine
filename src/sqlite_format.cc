@@ -8,6 +8,7 @@
 Pgsz DbHeader::get_pg_sz()
 {
   PageCache *pcache = PageCache::get_instance();
+  assert(pcache->is_rd_locked());
   u8 *hdr_data = pcache->fetch(SQLITE_MASTER_ROOTPGNO);
   return u8s_to_val<Pgsz>(&hdr_data[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
 }
@@ -15,11 +16,12 @@ Pgsz DbHeader::get_pg_sz()
 Pgsz DbHeader::get_reserved_space()
 {
   PageCache *pcache = PageCache::get_instance();
+  assert(pcache->is_rd_locked());
   u8 *hdr_data = pcache->fetch(SQLITE_MASTER_ROOTPGNO);
   return u8s_to_val<Pgsz>(&hdr_data[DBHDR_RESERVEDSPACE_OFFSET], DBHDR_RESERVEDSPACE_LEN);
 }
 
-u16 DbHeader::get_file_change_counter()
+u32 DbHeader::get_file_change_counter()
 {
   PageCache *pcache = PageCache::get_instance();
   assert(pcache->is_rd_locked());
@@ -32,7 +34,7 @@ errstat DbHeader::inc_file_change_counter()
   PageCache *pcache = PageCache::get_instance();
   if (!pcache->is_wr_locked()) return MYSQLITE_FLOCK_NEEDED;
   u8 *hdr_data = pcache->fetch(SQLITE_MASTER_ROOTPGNO);
-  u16 fcc = u8s_to_val<Pgsz>(&hdr_data[DBHDR_FCC_OFFSET], DBHDR_FCC_LEN);
+  u32 fcc = u8s_to_val<Pgsz>(&hdr_data[DBHDR_FCC_OFFSET], DBHDR_FCC_LEN);
   *(&hdr_data[DBHDR_FCC_OFFSET]) = fcc + 1;
   return MYSQLITE_OK;
 }

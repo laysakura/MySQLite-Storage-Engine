@@ -22,10 +22,12 @@
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "mysqlite_types.h"
 #include "utils.h"
+#include "pcache_mmap.h"
 
 
 struct BtreePathNode {
@@ -72,64 +74,69 @@ static inline u64 stype2len(u64 stype) {
 ** @return
 ** NULL: Error. `message' is set.
 */
-static inline FILE *_open_sqlite_db(const char * const path,
-                                    /* out */
-                                    bool * const is_existing_db,
-                                    char * const message,
-                                    errstat * const res)
+static inline int _open_sqlite_db(const char * const path,
+                                  /* out */
+                                  bool * const is_existing_db,
+                                  char * const message,
+                                  errstat * const res)
 {
-  FILE *f;
+  int fd;
   struct stat st;
   if (stat(path, &st) == 0) {
     *is_existing_db = true;
-    f = fopen(path, "r");
-    if (!f) {
+    fd = open(path, O_RDWR);
+    if (fd == -1) {
       sprintf(message, "Permission denied: Cannot open %s in read mode.\n", path);
       *res = MYSQLITE_PERMISSION_DENIED;
-      return NULL;
+      return -1;
     }
+    FILE *f = fdopen(fd, "r");
     if (!has_sqlite3_signature(f)) {
       sprintf(message, "Format error: %s does not seem SQLite3 database.\n", path);
       *res = MYSQLITE_CORRUPT_DB;
-      return NULL;
+      return -1;
     }
   } else {
     *is_existing_db = false;
-    f = fopen(path, "w+");
-    if (!f) {
+    fd = open(path, O_RDWR | O_CREAT);
+    if (fd == -1) {
       sprintf(message, "Permission denied: Cannot create %s.\n", path);
       *res = MYSQLITE_PERMISSION_DENIED;
-      return NULL;
+      return -1;
     }
   }
   *res = MYSQLITE_OK;
-  return f;
+  return fd;
 }
-static inline FILE *_open_sqlite_db(const char * const path,
-                                    /* out */
-                                    bool * const is_existing_db,
-                                    errstat * const res)
+static inline int _open_sqlite_db(const char * const path,
+                                  /* out */
+                                  bool * const is_existing_db,
+                                  errstat * const res)
 {
   char msg[1024];
-  FILE *f_ret = _open_sqlite_db(path, is_existing_db, msg, res);
-  if (!f_ret) log_msg("%s", msg);
-  return f_ret;
+  int fd_ret = _open_sqlite_db(path, is_existing_db, msg, res);
+  if (fd_ret == -1) log_msg("%s", msg);
+  return fd_ret;
 }
-static inline FILE *open_sqlite_db(const char * const existing_path,
-                                   /* out */
-                                   errstat * const res)
+
+/**
+ * @return File discriptor.  -1 on error.
+ */
+static inline int open_sqlite_db(const char * const existing_path,
+                                 /* out */
+                                 errstat * const res)
 {
   bool is_existing_db;
-  FILE *f_ret = _open_sqlite_db(existing_path, &is_existing_db, res);
-  if (!f_ret) return NULL;
+  int fd_ret = _open_sqlite_db(existing_path, &is_existing_db, res);
+  if (fd_ret == -1) return -1;
 
   if (!is_existing_db) {
     abort();  // TODO: Opening (creating) new SQLite DB is not yet supported.
     *res = MYSQLITE_DB_FILE_NOT_FOUND;
-    return NULL;
+    return -1;
   }
 
-  return f_ret;
+  return fd_ret;
 }
 
 
@@ -146,7 +153,7 @@ class DbHeader {
   static Pgsz get_reserved_space();
 
   public:
-  static u16 get_file_change_counter();
+  static u32 get_file_change_counter();
 
   public:
   static errstat inc_file_change_counter();
@@ -199,6 +206,7 @@ class BtreePage : public Page {
 
   public:
   btree_page_type get_btree_type() const {
+    assert(PageCache::get_instance()->is_rd_locked());
     return (btree_page_type)pg_data[
       pgno == 1 ? DB_HEADER_SZ + BTREEHDR_BTREETYPE_OFFSET :
                    BTREEHDR_BTREETYPE_OFFSET
@@ -207,6 +215,7 @@ class BtreePage : public Page {
 
   protected:
   Pgsz get_freeblock_offset() const {
+  assert(PageCache::get_instance()->is_rd_locked());
     return u8s_to_val<Pgsz>(
       &pg_data[
         pgno == 1 ? DB_HEADER_SZ + BTREEHDR_FREEBLOCKOFST_OFFSET :
@@ -217,6 +226,7 @@ class BtreePage : public Page {
 
   public:
   Pgsz get_n_cell() const {
+    assert(PageCache::get_instance()->is_rd_locked());
     return u8s_to_val<Pgsz>(
       &pg_data[
         pgno == 1 ? DB_HEADER_SZ + BTREEHDR_NCELL_OFFSET :
@@ -227,6 +237,7 @@ class BtreePage : public Page {
 
   protected:
   Pgsz get_cell_content_area_offset() const {
+    assert(PageCache::get_instance()->is_rd_locked());
     return u8s_to_val<Pgsz>(
       &pg_data[
         pgno == 1 ? DB_HEADER_SZ + BTREEHDR_CELLCONTENTAREAOFST_OFFSET :
@@ -237,6 +248,7 @@ class BtreePage : public Page {
 
   protected:
   u8 get_n_fragmentation() const {
+    assert(PageCache::get_instance()->is_rd_locked());
     return pg_data[
       pgno == 1 ? DB_HEADER_SZ + BTREEHDR_NFRAGMENTATION_OFFSET :
                    BTREEHDR_NFRAGMENTATION_OFFSET
@@ -246,7 +258,8 @@ class BtreePage : public Page {
   public:
   Pgno get_rightmost_pg() const {
     my_assert(get_btree_type() == INDEX_INTERIOR ||
-           get_btree_type() == TABLE_INTERIOR);
+              get_btree_type() == TABLE_INTERIOR);
+    assert(PageCache::get_instance()->is_rd_locked());
     return u8s_to_val<Pgno>(
       &pg_data[
         pgno == 1 ? DB_HEADER_SZ + BTREEHDR_RIGHTMOSTPG_OFFSET :
@@ -255,7 +268,7 @@ class BtreePage : public Page {
       BTREEHDR_RIGHTMOSTPG_LEN);
   }
 
-  protected:
+  public:
   bool is_valid_hdr() const {
     bool is_valid = true;
     { // btree type
@@ -300,6 +313,7 @@ class BtreePage : public Page {
   */
   protected:
   Pgsz get_ith_cell_offset(Pgsz i) const {
+    assert(PageCache::get_instance()->is_rd_locked());
     if (i >= get_n_cell()) return 0;
 
     // cpa stands for Cell Pointer Array
@@ -312,6 +326,7 @@ class BtreePage : public Page {
 
   protected:
   Pgno get_leftchild_pgno(Pgsz start_offset) const {
+    assert(PageCache::get_instance()->is_rd_locked());
     return u8s_to_val<Pgno>(&pg_data[start_offset], BTREECELL_LECTCHILD_LEN);
   }
 
@@ -321,11 +336,13 @@ class BtreePage : public Page {
   */
   protected:
   u64 get_payload_sz(Pgsz start_offset, u8 *len) const {
+    assert(PageCache::get_instance()->is_rd_locked());
     return varint2u64(&pg_data[start_offset], len);
   }
 
   protected:
   u64 get_rowid(Pgsz start_offset, u8 *len) const {
+    assert(PageCache::get_instance()->is_rd_locked());
     return varint2u64(&pg_data[start_offset], len);
   }
 
@@ -436,6 +453,7 @@ class TableLeafPage : public BtreePage {
                     /*out*/
                     RecordCell *cell) const
   {
+    assert(PageCache::get_instance()->is_rd_locked());
     u8 len;
     Pgsz cell_offset, offset;
     cell_offset = offset = get_ith_cell_offset(i);
@@ -556,6 +574,7 @@ class TableInteriorPage : public BtreePage {
   void get_ith_cell(int i,
                     /* out */
                     struct TableInteriorPageCell *cell) const {
+    assert(PageCache::get_instance()->is_rd_locked());
     u8 len;
     Pgsz offset = get_ith_cell_offset(i);
 

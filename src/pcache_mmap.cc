@@ -1,5 +1,3 @@
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 
@@ -11,16 +9,28 @@
  ** PageCache class
  ***********************************************************************/
 PageCache::PageCache()
-  : p_db(NULL), fd_db(0), lock_state(UNLOCKED), mmap_size(0), pgsz(0)
+  : p_db(NULL), fd_db(0), lock_state(UNLOCKED), n_reader(0), mmap_size(0), pgsz(0)
 {
+  pthread_mutex_init(&mutex, NULL);
+}
+
+PageCache::~PageCache()
+{
+  pthread_mutex_destroy(&mutex);
 }
 
 errstat PageCache::open(const char * const path)
 {
-  if ((fd_db = ::open(path, O_RDWR | O_CREAT)) == -1) {
+  pthread_mutex_lock(&mutex);
+
+  assert(!is_opened());  // TODO: support 2 or more DB open
+
+  errstat res;
+  fd_db = open_sqlite_db(path, &res);
+  if (res != MYSQLITE_OK) {
     perror("open");
-    log_errstat(MYSQLITE_DB_FILE_NOT_FOUND);
-    return MYSQLITE_DB_FILE_NOT_FOUND;
+    log_errstat(res);
+    return res;
   }
 
   // getting file size
@@ -28,6 +38,7 @@ errstat PageCache::open(const char * const path)
   if (fstat(fd_db, &stbuf) == -1) {
     perror("fstat");
     log_errstat(MYSQLITE_DB_FILE_NOT_FOUND);
+    pthread_mutex_unlock(&mutex);
     return MYSQLITE_DB_FILE_NOT_FOUND;
   }
   mmap_size = stbuf.st_size;
@@ -39,13 +50,25 @@ errstat PageCache::open(const char * const path)
   // Check page size of db_path.
   pgsz = u8s_to_val<Pgsz>(&p_db[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
 
+  pthread_mutex_unlock(&mutex);
   return MYSQLITE_OK;
 }
 
 void PageCache::close()
 {
+  pthread_mutex_lock(&mutex);
+
+  assert(is_opened());
   munmap(p_db, mmap_size);
   ::close(fd_db);
+  p_db = NULL;
+
+  pthread_mutex_unlock(&mutex);
+}
+
+bool PageCache::is_opened() const
+{
+  return p_db;
 }
 
 u8 * PageCache::fetch(Pgno pgno) const
@@ -64,8 +87,12 @@ void PageCache::rd_lock()
   flock.l_start = 0;
   flock.l_len = 0;
   flock.l_type = F_RDLCK;
+
+  pthread_mutex_lock(&mutex);
   fcntl(fd_db, F_SETLKW, &flock);
   lock_state = RD_LOCKED;
+  ++n_reader;
+  pthread_mutex_unlock(&mutex);
 }
 
 void PageCache::upgrade_lock()
@@ -76,8 +103,11 @@ void PageCache::upgrade_lock()
   flock.l_start = 0;
   flock.l_len = 0;
   flock.l_type = F_RDLCK;
+
+  pthread_mutex_lock(&mutex);
   fcntl(fd_db, F_SETLKW, &flock);
   lock_state = WR_LOCKED;
+  pthread_mutex_unlock(&mutex);
 }
 
 void PageCache::unlock()
@@ -88,8 +118,12 @@ void PageCache::unlock()
   flock.l_start = 0;
   flock.l_len = 0;
   flock.l_type = F_UNLCK;
+
+  pthread_mutex_lock(&mutex);
   fcntl(fd_db, F_SETLKW, &flock);
-  lock_state = UNLOCKED;
+  --n_reader;
+  if (n_reader == 0) lock_state = UNLOCKED;
+  pthread_mutex_unlock(&mutex);
 }
 
 bool PageCache::is_rd_locked() const

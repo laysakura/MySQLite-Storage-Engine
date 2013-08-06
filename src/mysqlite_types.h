@@ -20,7 +20,7 @@
 #define DBHDR_RESERVEDSPACE_LEN 1
 
 #define DBHDR_FCC_OFFSET 24
-#define DBHDR_FCC_LEN 2
+#define DBHDR_FCC_LEN 4
 
 #define PAGE_MIN_SZ 512
 #define PAGE_MAX_SZ 65536

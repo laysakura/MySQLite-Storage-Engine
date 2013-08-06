@@ -2,6 +2,8 @@
 #define _PCACHE_MMAP_H_
 
 
+#include <pthread.h>
+
 #include "mysqlite_types.h"
 #include "utils.h"
 
@@ -18,8 +20,10 @@ private:
     RD_LOCKED,
     WR_LOCKED,
   } lock_state;
+  int n_reader;  // reference counter for read locks
   size_t mmap_size;
   Pgsz pgsz;
+  pthread_mutex_t mutex;
 
   public:
   static PageCache *get_instance() {
@@ -35,6 +39,7 @@ private:
   public:
   errstat open(const char * const path);
   void close();
+  bool is_opened() const;
 
   /**
    * Fetch a page.
@@ -59,6 +64,7 @@ private:
 
   public:
   PageCache();
+  ~PageCache();
 
   private:
   PageCache(const PageCache&);
