@@ -2,25 +2,7 @@
 
 #include "../mysqlite_api.h"
 #include "../sqlite_format.h"
-#include "../pcache.h"
 #include "../mysqlite_config.h"
-
-
-/**
- * Materialize page cache
- */
-class sqlite_formatEnvironment : public ::testing::Environment {
-public:
-  void SetUp() {
-    PageCache *pcache = PageCache::get_instance();
-    pcache->alloc(1024 * 100);
-  }
-  void TearDown() {
-    PageCache *pcache = PageCache::get_instance();
-    pcache->free();
-  }
-};
-::testing::Environment* const sf_env = ::testing::AddGlobalTestEnvironment(new sqlite_formatEnvironment);
 
 
 /*
@@ -48,8 +30,10 @@ TEST(BtreePage, BtreePageValidityCheck_success)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TBtreePage btree_page(2);
+  conn.rdlock_db();
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_TRUE(btree_page.is_valid_hdr());
+  conn.unlock_db();
 
   conn.close();
 }
@@ -62,8 +46,10 @@ TEST(BtreePage, BtreePageValidityCheck_page1)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TBtreePage btree_page(1);
+  conn.rdlock_db();
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_TRUE(btree_page.is_valid_hdr());
+  conn.unlock_db();
 
   conn.close();
 }
@@ -77,8 +63,10 @@ TEST(BtreePage, get_ith_cell_offset_EmptyTable)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TBtreePage btree_page(2);
+  conn.rdlock_db();
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_EQ(0, btree_page.get_ith_cell_offset(0));
+  conn.unlock_db();
 
   conn.close();
 }
@@ -91,6 +79,7 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TBtreePage btree_page(2);
+  conn.rdlock_db();
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   {
     ASSERT_GT(btree_page.get_ith_cell_offset(0), 0);
@@ -103,6 +92,7 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
   {
     ASSERT_EQ(btree_page.get_ith_cell_offset(2), 0);
   }
+  conn.unlock_db();
 
   conn.close();
 }
@@ -120,6 +110,7 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TableLeafPage tbl_leaf_page(2);
+  conn.rdlock_db();
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     for (u64 row = 0; row < 2; ++row) {
@@ -147,6 +138,7 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
       }
     }
   }
+  conn.unlock_db();
 
   conn.close();
 }
@@ -159,6 +151,7 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TableLeafPage tbl_leaf_page(1); // sqlite_master
+  conn.rdlock_db();
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     for (u64 row = 0; row < 2; ++row) {
@@ -176,6 +169,7 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
       ASSERT_STREQ(data.c_str(), answer);
     }
   }
+  conn.unlock_db();
 
   conn.close();
 }
@@ -188,6 +182,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TableLeafPage tbl_leaf_page(2);
+  conn.rdlock_db();
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     RecordCell cell;
@@ -207,6 +202,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
     ASSERT_STREQ(data.c_str(), answer.c_str());
     delete payload_data;
   }
+  conn.unlock_db();
 
   conn.close();
 }
@@ -219,6 +215,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   TableLeafPage tbl_leaf_page(2);
+  conn.rdlock_db();
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     RecordCell cell;
@@ -238,6 +235,7 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
     ASSERT_STREQ(data.c_str(), answer.c_str());
     delete payload_data;
   }
+  conn.unlock_db();
 
   conn.close();
 }
