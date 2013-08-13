@@ -57,6 +57,10 @@ foreach(target ${mysqlite_utest_targets})
   )
     set(utest_src ${utest_src} ../mysqlite_api.cc)
   endif()
+  if(utils STREQUAL ${target}
+  )
+    set(utest_src ${utest_src} ../utils.cc)
+  endif()
 
   add_executable(${target}Test ${utest_src})
   target_link_libraries(${target}Test ${GTEST_LDADD})

@@ -2,14 +2,13 @@
 #include <fcntl.h>
 
 #include "pcache_mmap.h"
-#include "sqlite_format.h"
 
 
 /***********************************************************************
  ** PageCache class
  ***********************************************************************/
 PageCache::PageCache()
-  : p_db(NULL), fd_db(0), lock_state(UNLOCKED), n_reader(0), mmap_size(0), pgsz(0)
+  : p_db(NULL), sqlite_db(), lock_state(UNLOCKED), n_reader(0), mmap_size(0), pgsz(0)
 {
   pthread_mutex_init(&mutex, NULL);
 }
@@ -24,29 +23,16 @@ errstat PageCache::open(const char * const path)
   pthread_mutex_lock(&mutex);
 
   assert(!is_opened());  // TODO: support 2 or more DB open
+  sqlite_db.reset(path);
 
-  errstat res;
-  fd_db = open_sqlite_db(path, &res);
-  if (res != MYSQLITE_OK) {
-    perror("open");
-    log_errstat(res);
+  if (sqlite_db->mode() == SqliteDb::FAIL) {
     pthread_mutex_unlock(&mutex);
     return res;
   }
 
-  // getting file size
-  struct stat stbuf;
-  if (fstat(fd_db, &stbuf) == -1) {
-    perror("fstat");
-    log_errstat(MYSQLITE_DB_FILE_NOT_FOUND);
-    pthread_mutex_unlock(&mutex);
-    return MYSQLITE_DB_FILE_NOT_FOUND;
-  }
-  mmap_size = stbuf.st_size;
-
   // TODO: DB file can be updated.
   // Needs larger memory than file size?
-  p_db = (u8 *)mmap(0, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_db, 0);
+  p_db = (u8 *)mmap(0, sqlite_db->file_size(), PROT_READ | PROT_WRITE, MAP_SHARED, sqlite_db->fd(), 0);
 
   // Check page size of db_path.
   pgsz = u8s_to_val<Pgsz>(&p_db[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
@@ -60,7 +46,7 @@ void PageCache::close()
   pthread_mutex_lock(&mutex);
 
   assert(is_opened());
-  munmap(p_db, mmap_size);
+  munmap(p_db, sqlite_db->file_size());
   ::close(fd_db);
   p_db = NULL;
 
@@ -69,7 +55,7 @@ void PageCache::close()
 
 bool PageCache::is_opened() const
 {
-  return p_db;
+  return sqlite_db && sqlite_db->mode() != SqliteDb::FAIL;
 }
 
 u8 * PageCache::fetch(Pgno pgno) const

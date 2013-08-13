@@ -1,5 +1,10 @@
 #include <gtest/gtest.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <bits/unique_ptr.h>
 
+#include "../mysqlite_config.h"
 #include "../utils.h"
 
 TEST(varint2u64, 1seq)
@@ -104,4 +109,62 @@ TEST(u8s_to_val, to_u64)
   seq[6] = 0xde;
   seq[7] = 0xf0;
   EXPECT_EQ(0x123456789abcdef0u, u8s_to_val<u64>(&seq[0], 8));
+}
+
+TEST(SqliteDb, usage)
+{
+  unlink(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite");
+  {
+    std::unique_ptr<SqliteDb> sqlite_db;
+    sqlite_db.reset(new SqliteDb("/invalid/path/a.db"));
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::FAIL);
+  }
+  {
+    std::unique_ptr<SqliteDb> sqlite_db;
+    sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/01-illegal.sqlite"));
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::FAIL);
+  }
+  {
+    struct stat st;
+    ASSERT_EQ(stat(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", &st), -1);
+
+    std::unique_ptr<SqliteDb> sqlite_db;
+    sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", true));
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::FAIL);
+
+    ASSERT_EQ(stat(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", &st), -1);
+  }
+  {
+    std::unique_ptr<SqliteDb> sqlite_db;
+    sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite"));
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::READ_WRITE);
+  }
+  {
+    struct stat st;
+    ASSERT_EQ(stat(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", &st), -1);  // not exists
+
+    std::unique_ptr<SqliteDb> sqlite_db;
+    sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite"));
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::READ_WRITE);
+
+    ASSERT_EQ(stat(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", &st), 0);   // created
+    ASSERT_EQ(unlink(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite"), 0);
+  }
+  {
+    struct stat st;
+    ASSERT_EQ(stat(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", &st), -1);  // not exists
+    int fd = open(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", O_RDWR | O_CREAT); // create empty file
+
+    std::unique_ptr<SqliteDb> sqlite_db;
+    sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite"));
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::READ_WRITE);
+
+    close(fd);
+    ASSERT_EQ(unlink(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite"), 0);
+  }
+  {
+    std::unique_ptr<SqliteDb> sqlite_db;
+    sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite", true));
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::READ_ONLY);
+  }
 }

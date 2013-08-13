@@ -3,6 +3,7 @@
 
 
 #include <pthread.h>
+#include <bits/unique_ptr.h>
 
 #include "mysqlite_types.h"
 #include "utils.h"
@@ -13,15 +14,13 @@
  */
 class PageCache {
 private:
-  u8 *p_db;
-  int fd_db;
+  std::unique_ptr<SqliteDb> sqlite_db;
   enum {
     UNLOCKED,
     RD_LOCKED,
     WR_LOCKED,
   } lock_state;
   int n_reader;  // reference counter for read locks
-  size_t mmap_size;
   Pgsz pgsz;
   pthread_mutex_t mutex;
 
