@@ -15,6 +15,7 @@
 class PageCache {
 private:
   std::unique_ptr<SqliteDb> sqlite_db;
+  u8 *p_mapped;
   enum {
     UNLOCKED,
     RD_LOCKED,

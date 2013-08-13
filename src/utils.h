@@ -155,6 +155,14 @@ static inline errstat mysqlite_fread(void *ptr, long offset, size_t nbyte, FILE 
 }
 
 
+/**
+ * Class to deal with SQLite DB file.
+ *
+ * This *only* provides:
+ * - Error check
+ * - File descriptor
+ * - Open mode
+ */
 class SqliteDb {
 public:
   typedef enum {
