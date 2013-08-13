@@ -28,12 +28,12 @@ TEST(SqliteDb, usage)
   {
     std::unique_ptr<SqliteDb> sqlite_db;
     sqlite_db.reset(new SqliteDb("/invalid/path/a.db"));
-    ASSERT_EQ((*sqlite_db).mode(), SqliteDb::FAIL);
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::FAIL);
   }
   {
     std::unique_ptr<SqliteDb> sqlite_db;
     sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/01-illegal.sqlite"));
-    ASSERT_EQ((*sqlite_db).mode(), SqliteDb::FAIL);
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::FAIL);
   }
   {
     struct stat st;
@@ -41,14 +41,14 @@ TEST(SqliteDb, usage)
 
     std::unique_ptr<SqliteDb> sqlite_db;
     sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", true));
-    ASSERT_EQ((*sqlite_db).mode(), SqliteDb::FAIL);
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::FAIL);
 
     ASSERT_EQ(stat(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", &st), -1);
   }
   {
     std::unique_ptr<SqliteDb> sqlite_db;
     sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite"));
-    ASSERT_EQ((*sqlite_db).mode(), SqliteDb::READ_WRITE);
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::READ_WRITE);
   }
   {
     struct stat st;
@@ -56,7 +56,7 @@ TEST(SqliteDb, usage)
 
     std::unique_ptr<SqliteDb> sqlite_db;
     sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite"));
-    ASSERT_EQ((*sqlite_db).mode(), SqliteDb::READ_WRITE);
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::READ_WRITE);
 
     ASSERT_EQ(stat(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite", &st), 0);   // created
     ASSERT_EQ(unlink(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite"), 0);
@@ -68,7 +68,7 @@ TEST(SqliteDb, usage)
 
     std::unique_ptr<SqliteDb> sqlite_db;
     sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite"));
-    ASSERT_EQ((*sqlite_db).mode(), SqliteDb::READ_WRITE);
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::READ_WRITE);
 
     close(fd);
     ASSERT_EQ(unlink(MYSQLITE_TEST_DB_DIR "/not-exist.sqlite"), 0);
@@ -76,7 +76,7 @@ TEST(SqliteDb, usage)
   {
     std::unique_ptr<SqliteDb> sqlite_db;
     sqlite_db.reset(new SqliteDb(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite", true));
-    ASSERT_EQ((*sqlite_db).mode(), SqliteDb::READ_ONLY);
+    ASSERT_EQ(sqlite_db->mode(), SqliteDb::READ_ONLY);
   }
 
 
