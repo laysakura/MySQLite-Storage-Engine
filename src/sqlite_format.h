@@ -68,6 +68,39 @@ static inline u64 stype2len(u64 stype) {
 }
 
 
+class SqliteDb {
+public:
+  typedef enum {
+    FAIL,        // (1) pathのディレクトリ上で新規にファイル作成できない
+                 // (2) pathにファイルがあるが，SQLiteのDBとしてinvalid (注: 空ファイルはvalid)
+                 // (3) READ_ONLYモードでDBを開くようにリクエストされたが，ファイルが存在しない
+    READ_WRITE,  // (1) pathにvalidなSQLite DBがあって，それを通常モードで開いた
+                 // (2) pathのディレクトリ上で新規にSQLite DBを作成した
+    READ_ONLY,   // (1) READ_ONLYモードでDBを開くようにリクエストされ，validなDBを開いた
+  } open_mode;
+
+private:
+  int _fd;
+  open_mode _mode;
+
+  public:
+  static bool has_sqlite3_signature(int fd);
+
+  public:
+  SqliteDb(const char *path, bool read_only = false);
+  ~SqliteDb();
+
+  public:
+  open_mode mode() const;
+
+private:
+  // Prohibit any way to create instance
+  SqliteDb();
+  SqliteDb(const SqliteDb&);
+  SqliteDb& operator=(const SqliteDb&);
+};
+
+
 /*
 ** Open the path and if file exists in the path then check the validity as a SQLite DB.
 **

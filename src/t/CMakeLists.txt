@@ -27,6 +27,10 @@ set(mysqlite_utest_targets utils pcacheMmap sqlite_format mysqlite_api)
 ################################################################################
 # Compile and link
 ################################################################################
+add_definitions("-std=c++0x")
+add_definitions("-fno-exceptions")
+add_definitions("-fno-rtti")
+
 include_directories(../../../../sql ../../../../include)
 
 foreach(target ${mysqlite_utest_targets})
