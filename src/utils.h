@@ -144,7 +144,7 @@ static inline errstat mysqlite_fread(void *ptr, long offset, size_t nbyte, FILE 
 
 
 /**
- * Class to deal with SQLite DB file.
+ * Class to deal with SQLite DB file written by RAII idiom.
  *
  * This *only* provides:
  * - Error check

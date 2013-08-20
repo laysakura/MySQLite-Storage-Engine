@@ -4,11 +4,11 @@
 
 #if (__GNUC__ >= 4 && __GNUC_MINOR__ >= 5)  // See: http://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg270025.html
 #include <memory>
-#else
+#else // (gcc < 4.5)
 #include <bits/unique_ptr.h>
 #endif
 
-#include <pthread.h>
+#include <mutex>
 
 #include "mysqlite_types.h"
 #include "utils.h"
@@ -28,7 +28,7 @@ private:
   } lock_state;
   int n_reader;  // reference counter for read locks
   Pgsz pgsz;
-  pthread_mutex_t mutex;
+  std::mutex mutex;
 
   public:
   static PageCache *get_instance() {

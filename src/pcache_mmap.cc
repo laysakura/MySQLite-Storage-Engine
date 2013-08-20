@@ -10,23 +10,20 @@
 PageCache::PageCache()
   : sqlite_db(), p_mapped(NULL), lock_state(UNLOCKED), n_reader(0), pgsz(0)
 {
-  pthread_mutex_init(&mutex, NULL);
 }
 
 PageCache::~PageCache()
 {
-  pthread_mutex_destroy(&mutex);
 }
 
 errstat PageCache::open(const char * const path)
 {
-  pthread_mutex_lock(&mutex);
+  std::lock_guard<std::mutex> lock(mutex);
 
   assert(!is_opened());  // TODO: support 2 or more DB open
   sqlite_db.reset(new SqliteDb(path));
 
   if (sqlite_db->mode() == SqliteDb::FAIL) {
-    pthread_mutex_unlock(&mutex);
     return MYSQLITE_CANNOT_OPEN_DB_FILE;
   }
 
@@ -37,21 +34,18 @@ errstat PageCache::open(const char * const path)
   // Check page size of db_path.
   pgsz = u8s_to_val<Pgsz>(&p_mapped[DBHDR_PGSZ_OFFSET], DBHDR_PGSZ_LEN);
 
-  pthread_mutex_unlock(&mutex);
   return MYSQLITE_OK;
 }
 
 void PageCache::close()
 {
-  pthread_mutex_lock(&mutex);
+  std::lock_guard<std::mutex> lock(mutex);
 
   assert(is_opened());
   munmap(p_mapped, sqlite_db->file_size());
   p_mapped = NULL;
   sqlite_db.reset();  // TODO: そもそもこんなの書かないで済むようにするためのRAII．
                      // pcache自体がRAIIじゃないとうまみがない
-
-  pthread_mutex_unlock(&mutex);
 }
 
 bool PageCache::is_opened() const
@@ -76,11 +70,10 @@ void PageCache::rd_lock()
   flock.l_len = 0;
   flock.l_type = F_RDLCK;
 
-  pthread_mutex_lock(&mutex);
+  std::lock_guard<std::mutex> lock(mutex);
   fcntl(sqlite_db->fd(), F_SETLKW, &flock);
   lock_state = RD_LOCKED;
   ++n_reader;
-  pthread_mutex_unlock(&mutex);
 }
 
 void PageCache::upgrade_lock()
@@ -92,10 +85,9 @@ void PageCache::upgrade_lock()
   flock.l_len = 0;
   flock.l_type = F_RDLCK;
 
-  pthread_mutex_lock(&mutex);
+  std::lock_guard<std::mutex> lock(mutex);
   fcntl(sqlite_db->fd(), F_SETLKW, &flock);
   lock_state = WR_LOCKED;
-  pthread_mutex_unlock(&mutex);
 }
 
 void PageCache::unlock()
@@ -107,11 +99,10 @@ void PageCache::unlock()
   flock.l_len = 0;
   flock.l_type = F_UNLCK;
 
-  pthread_mutex_lock(&mutex);
+  std::lock_guard<std::mutex> lock(mutex);
   fcntl(sqlite_db->fd(), F_SETLKW, &flock);
   --n_reader;
   if (n_reader == 0) lock_state = UNLOCKED;
-  pthread_mutex_unlock(&mutex);
 }
 
 bool PageCache::is_rd_locked() const
