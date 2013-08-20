@@ -77,7 +77,8 @@ TEST(CheckAllData, SmallData)
     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
     ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
-    string name = rows->get_text(1);
+    string name;
+    rows->get_text(1, name);
     ASSERT_STREQ("Shonan Gold", name.c_str());
 
     int price = rows->get_int(2);

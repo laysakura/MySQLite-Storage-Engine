@@ -110,20 +110,24 @@ mysqlite_type RowCursor::get_type(int colno) const
 {
   // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
   // TODO: So redundunt....
-  // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat ret = tbl_leaf_page.fetch();
   my_assert(ret == MYSQLITE_OK);
 
-  RecordCell cell;
-  if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
-      cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
-    u8 *payload_data = new u8[cell.payload_sz];
-    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    my_assert(ret);
-  }
+  vector<u8> buf;
+  Pyaload payload(buf);
+  tbl_leaf_page.get_ith_cell(cpa_idx, buf);  // fill cell.payload.data
+  return payload.cols_type[colno];
 
-  return sqlite_type_to_mysqlite_type(cell.payload.cols_type[colno]);
+  /* RecordCell cell; */
+  /* if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) && */
+  /*     cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい */
+  /*   u8 *payload_data = new u8[cell.payload_sz]; */
+  /*   bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data); */
+  /*   my_assert(ret); */
+  /* } */
+
+  /* return sqlite_type_to_mysqlite_type(cell.payload.cols_type[colno]); */
 }
 
 int RowCursor::get_int(int colno) const
@@ -151,24 +155,45 @@ int RowCursor::get_int(int colno) const
                            cell.payload.cols_len[colno]);
   }
 }
-string RowCursor::get_text(int colno) const
+
+/**
+ * Gets a blob where row=<current cursor> and column=<colno>.
+ * 
+ *
+ * @param colno  Column number (0-origin)
+ * @param buf  Buffer to store result blob. The buffer is only used when overflow page exists.
+ * @return  Reference to blob data (vector<u8>). This can be either buf or reference of page cache data.
+ */
+vector<u8> &RowCursor::get_blob(int colno,
+                               /* out */
+                               vector<u8> &buf)
 {
-  // TODO: use cache for record!!
+  // TODO: 例えば，20カラムあるレコードで1カラム目が要求されていたら，2カラム目以降は見ない，とかできないかな？
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat res = tbl_leaf_page.fetch();
   my_assert(res == MYSQLITE_OK);
 
-  RecordCell cell;
-  if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
-      cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
-    u8 *payload_data = new u8[cell.payload_sz];
-    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    my_assert(ret);
-  }
+  Payload payload(buf);
+  tbl_leaf_page.get_ith_cell(cpa_idx, payload);  // fill payload.data
+  payload.data.assign(&payload.data[cell.payload.cols_offset[colno]],
+                      &payload.data[cell.payload.cols_offset[colno]] + cell.payload.cols_len[colno]);
+  return payload.data;
 
-  // TODO: Cache... now memory leak
-  return string((char *)&cell.payload.data[cell.payload.cols_offset[colno]],
-                cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい
+  /* buf = &buf[cell.payload.cols_offset[colno]]; */
+  /* assert(buf.size() >= cell.payload.cols_len[colno]); */
+  /* buf.resize(cell.payload.cols_len[colno]); */
+  /* return; */
+
+  /* if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) && */
+  /*     cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい */
+  /*   u8 *payload_data = new u8[cell.payload_sz];  // これが不要になる！ */
+  /*   bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data); */
+  /*   my_assert(ret); */
+  /* } */
+
+  /* // TODO: Cache... now memory leak */
+  /* return string((char *)&cell.payload.data[cell.payload.cols_offset[colno]], */
+  /*               cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい */
 }
 
 

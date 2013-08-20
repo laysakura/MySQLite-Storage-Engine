@@ -296,15 +296,15 @@ public:
   vector<u64> cols_offset;    // Can be longer than Pgsz (overflow page)
   vector<u64> cols_len;
   vector<sqlite_type> cols_type;
-  u8 *data;                 // When payload has no overflow page,
+  vector<u8> &data;         // When payload has no overflow page,
                             // it points to a BtreePage's pg_data.
                             // Otherwise, new space is allocated
                             // (by vector class) and raw data is
                             // copied from more than 1 pages.
 
   public:
-  Payload()
-    : cols_offset(0), cols_len(0), cols_type(0), data(NULL)
+  Payload(vector<u8> &buf)
+    : cols_offset(0), cols_len(0), cols_type(0), data(buf)
   {}
 
 
@@ -348,13 +348,17 @@ public:
     return true;
   }
 
+private:
+  // Prohibit any way to create instance
+  Payload();
+  Payload(const Payload&);
+  Payload& operator=(const Payload&);
 };
 
 struct RecordCell {
   u64 payload_sz;
   u64 payload_sz_in_origpg;
   u64 rowid;
-  Payload payload;
   Pgno overflow_pgno;  // First overflow page num. 0 when cell has no overflow page.
 
   public:
@@ -373,51 +377,50 @@ class TableLeafPage : public BtreePage {
   ** copied data from pages.
   **
   ** @param i  Specifies i-th cell in the page (0-origin).
-  **
-  ** @return false on error
   */
   public:
-  bool get_ith_cell(Pgsz i,
-                    /*out*/
-                    RecordCell *cell) const
+  void &get_ith_cell(Pgsz i,
+                     /* out */
+                     Payload &payload) const
   {
     assert(PageCache::get_instance()->is_rd_locked());
+
     u8 len;
     Pgsz cell_offset, offset;
     cell_offset = offset = get_ith_cell_offset(i);
-    if (cell_offset == 0) return false;
+    assert(cell_offset != 0);
 
-    cell->payload_sz = get_payload_sz(offset, &len);
+    RecordCell cell(payload_data);
+    cell.payload_sz = get_payload_sz(offset, &len);
     offset += len;
 
-    cell->rowid = get_rowid(offset, &len);
+    cell.rowid = get_rowid(offset, &len);
     offset += len;
-
-    cell->payload.data = &pg_data[offset];
 
     // Overflow page treatment
     // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
     Pgsz usable_sz = DbHeader::get_pg_sz() - DbHeader::get_reserved_space();
     Pgsz max_local = usable_sz - 35;
-    if (cell->payload_sz <= max_local) {
+    if (cell.payload_sz <= max_local) {
       // no overflow page
-      cell->overflow_pgno = 0;
+      cell.overflow_pgno = 0;
+      payload.data.assign(&pg_data[offset], &pg_data[offset] + 9);  // Replace payload.data into page cache area
+                                                                    // since there is no need to copy page cache data
+                                                                    // to `buf' given in Payload::Payload().
+                                                                    // 9 is enough because payload size can be
+                                                                    // determined after reading leading varint.
+
     } else {
       // overflow page exists
       Pgsz min_local = (usable_sz - 12) * 32/255 - 23;
-      Pgsz local_sz = min_local + (cell->payload_sz - min_local) % (usable_sz - 4);
-      cell->payload_sz_in_origpg = local_sz > max_local ? min_local : local_sz;
+      Pgsz local_sz = min_local + (cell.payload_sz - min_local) % (usable_sz - 4);
+      cell.payload_sz_in_origpg = local_sz > max_local ? min_local : local_sz;
 
-      cell->overflow_pgno = u8s_to_val<Pgno>(&pg_data[offset + cell->payload_sz_in_origpg],
+      cell.overflow_pgno = u8s_to_val<Pgno>(&pg_data[offset + cell.payload_sz_in_origpg],
                                              BTREECELL_OVERFLOWPGNO_LEN);
-      return false;  // caller should call
-                     // get_ith_cell(Pgsz i, RecordCell *cell,
-                     //              vector<u8> *buf_overflown_payload)
-                     // later.
+      get_overflown_pgno_ith_cell(i, cell, payload);
     }
-
-    cell->payload.digest_data();
-    return true;
+    payload.digest_data();
   }
 
   /*
@@ -427,45 +430,41 @@ class TableLeafPage : public BtreePage {
   ** copied data from pages.
   **
   ** @param i  Specifies i-th cell in the page (0-origin).
-  **
-  ** @return false on error
   */
-  public:
-  bool get_ith_cell(Pgsz i,
-                    /*out*/
-                    RecordCell *cell,
-                    u8 *buf_overflown_payload) const
+  protected:
+  void get_overflown_pgno_ith_cell(Pgsz i,
+                                   const RecordCell &cell,
+                                   /*out*/
+                                   Payload &payload) const
   {
     // Asserted get_ith_cell(Pgsz i, RecordCell *cell) is called first
-    my_assert(buf_overflown_payload);
-    my_assert(cell->overflow_pgno != 0);
-    my_assert(cell->payload_sz_in_origpg > 0);
-    my_assert(cell->payload_sz_in_origpg < cell->payload_sz);
+    my_assert(cell.overflow_pgno != 0);
+    my_assert(cell.payload_sz_in_origpg > 0);
+    my_assert(cell.payload_sz_in_origpg < cell.payload_sz);
 
     // Copy payload from this page and overflow pages
     u64 offset = 0;
-    memcpy(&buf_overflown_payload[offset], cell->payload.data, cell->payload_sz_in_origpg);
-    offset += cell->payload_sz_in_origpg;
+    //memcpy(&buf[offset], cell.payload.data, cell.payload_sz_in_origpg);
+    offset += cell.payload_sz_in_origpg;
     Pgsz usable_sz = DbHeader::get_pg_sz() - DbHeader::get_reserved_space();
-    u64 payload_sz_rem = cell->payload_sz - cell->payload_sz_in_origpg;
+    u64 payload_sz_rem = cell.payload_sz - cell.payload_sz_in_origpg;
 
-    for (Pgno overflow_pgno = cell->overflow_pgno; overflow_pgno != 0; ) {
+    for (Pgno overflow_pgno = cell.overflow_pgno; overflow_pgno != 0; ) {
       Page ovpg(overflow_pgno);
       errstat res = ovpg.fetch();
       my_assert(res == MYSQLITE_OK);
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
       Pgsz payload_sz_inpg = min<u64>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
-      memcpy(&buf_overflown_payload[offset],
+      memcpy(&buf[offset],
              &ovpg.pg_data[sizeof(Pgno)],
              payload_sz_inpg);
       offset += payload_sz_inpg;
     }
     my_assert(payload_sz_rem == 0);
 
-    cell->payload.data = buf_overflown_payload;
-    cell->payload.digest_data();
-    return true;
+    cell.payload.data = buf;
+    cell.payload.digest_data();
   }
 
 
