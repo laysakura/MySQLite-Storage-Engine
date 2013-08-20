@@ -86,19 +86,6 @@ using namespace std;
 
 
 /*
-** Class to prohibit copy constructor
-*/
-class Uncopyable {
-protected:
-  Uncopyable() {}
-  ~Uncopyable() {}
-private:
-    Uncopyable(const Uncopyable&);
-    Uncopyable& operator=(const Uncopyable&);
-};
-
-
-/*
 ** Read (v[0] | v[1] ...) as a variant.
 ** If MSB of v[i] is 0, then v[i+1] is ignored.
 **
