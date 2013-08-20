@@ -2,8 +2,13 @@
 #define _PCACHE_MMAP_H_
 
 
-#include <pthread.h>
+#if (__GNUC__ >= 4 && __GNUC_MINOR__ >= 5)  // See: http://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg270025.html
+#include <memory>
+#else
 #include <bits/unique_ptr.h>
+#endif
+
+#include <pthread.h>
 
 #include "mysqlite_types.h"
 #include "utils.h"
