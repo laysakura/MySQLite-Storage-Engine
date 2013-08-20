@@ -18,6 +18,7 @@ set(MYSQLITE_TEST_DB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/t/db")
 ################################################################################
 # Define macros
 ################################################################################
+add_definitions("-std=c++0x")
 add_definitions("-DMYSQLITE_USING_CMAKE")
 add_definitions("-DMYSQL_DYNAMIC_PLUGIN")
 add_definitions( -DMARIADB -DFORCE_INIT_OF_VARS )
