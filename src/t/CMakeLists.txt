@@ -30,43 +30,22 @@ set(mysqlite_utest_targets utils pcache_mmap sqlite_format mysqlite_api)
 add_definitions("-std=c++0x")
 add_definitions("-fno-exceptions")
 add_definitions("-fno-rtti")
+add_definitions("-DMYSQLITE_USE_MMAP=1")
 
 include_directories(../../../../sql ../../../../include)
 
+
+## build test target library (<all sources> - ha_mysqlite.cc)
+foreach(t ${mysqlite_utest_targets})
+  set(lib_src ${lib_src} ../${t}.cc)
+endforeach(t ${mysqlite_utest_targets})
+add_library(mysqlite_test_target STATIC ${lib_src})
+
+
+## build each test executable
 foreach(target ${mysqlite_utest_targets})
-  # Add sources necessary to compile each test
-  set(utest_src ${target}Test.cc)
-  if(EXISTS ${CMAKE_SOURCE_DIR}/../${target}.cc)
-    set(utest_src ${utest_src} ${CMAKE_SOURCE_DIR}/../${target}.cc)
-  endif()
-
-  # Each test specific source
-  if(sqlite_format STREQUAL ${target}
-     OR mysqlite_api STREQUAL ${target}
-     OR pcache_mmap STREQUAL ${target}
-  )
-    set(utest_src ${utest_src} ../sqlite_format.cc)
-  endif()
-  if(mysqlite_api STREQUAL ${target}
-     OR sqlite_format STREQUAL ${target}
-     OR pcache_mmap STREQUAL ${target}
-  )
-    set(utest_src ${utest_src} ../pcache_mmap.cc)
-  endif()
-  if(sqlite_format STREQUAL ${target}
-  )
-    set(utest_src ${utest_src} ../mysqlite_api.cc)
-  endif()
-  if(utils STREQUAL ${target}
-     OR mysqlite_api STREQUAL ${target}
-     OR pcache_mmap STREQUAL ${target}
-     OR sqlite_format STREQUAL ${target}
-  )
-    set(utest_src ${utest_src} ../utils.cc)
-  endif()
-
-  add_executable(${target}Test ${utest_src})
-  target_link_libraries(${target}Test ${GTEST_LDADD})
+  add_executable(${target}Test ${target}Test.cc)
+  target_link_libraries(${target}Test ${GTEST_LDADD} libmysqlite_test_target.a)
   set_target_properties(
     ${target}Test PROPERTIES COMPILE_FLAGS
     "-g -Wall -Wextra -Wunused -Wwrite-strings -Wno-strict-aliasing -o0 -Werror -Wno-unused-parameter -Woverloaded-virtual"

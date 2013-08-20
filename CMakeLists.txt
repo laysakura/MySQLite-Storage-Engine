@@ -41,5 +41,5 @@ set(mysqlite_sources src/ha_mysqlite.cc src/sqlite_format.cc src/pcache_mmap.cc 
 include_directories(${cmake_source_dir}/storage/mysqlite/src)
 mysql_add_plugin(mysqlite ${mysqlite_sources} STORAGE_ENGINE MODULE_ONLY MODULE_OUTPUT_NAME "libmysqlite_engine")
 
-add_library(mysqlite_engine SHARED ${mysqlite_sources})
-target_link_libraries(mysqlite_engine ${CMAKE_SOURCE_DIR}/libservices/libmysqlservices.a)
+# add_library(mysqlite_engine SHARED ${mysqlite_sources})
+# target_link_libraries(mysqlite_engine ${CMAKE_SOURCE_DIR}/libservices/libmysqlservices.a)
