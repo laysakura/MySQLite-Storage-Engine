@@ -1,5 +1,5 @@
 #include "sqlite_format.h"
-#include "pcache_mmap.h"
+#include "pcache.h"
 
 
 /***********************************************************************

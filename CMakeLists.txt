@@ -7,6 +7,7 @@ set(MYSQLITE_VERSION_MINOR 0)
 # Performance tunings  # TODO: move to my.cnf
 ################################################################################
 set(MYSQLITE_PCACHE_SZ "(1 * 1024 * 1024 * 1024)")
+add_definitions("-DMYSQLITE_USE_MMAP=1")
 
 
 ################################################################################

@@ -1,7 +1,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
-#include "pcache_mmap.h"
+#include "pcache.h"
 
 
 /***********************************************************************

@@ -92,7 +92,7 @@
 #undef SAFE_MUTEX  // TODO: Necessary to use correct TABLE_SHARE::LOCK_ha_data->m_mutex.
                    // TODO: But should not be undefed.
 #include "ha_mysqlite.h"
-#include "pcache_mmap.h"
+#include "pcache.h"
 #include "utils.h"
 #include "mysqlite_api.h"
 #include "mysqlite_config.h"

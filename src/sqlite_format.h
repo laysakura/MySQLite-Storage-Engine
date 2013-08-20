@@ -27,7 +27,7 @@
 
 #include "mysqlite_types.h"
 #include "utils.h"
-#include "pcache_mmap.h"
+#include "pcache.h"
 
 
 struct BtreePathNode {

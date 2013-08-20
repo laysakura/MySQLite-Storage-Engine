@@ -2,7 +2,7 @@ using namespace std;
 #include <string>
 #include <fcntl.h>
 #include "mysqlite_api.h"
-#include "pcache_mmap.h"
+#include "pcache.h"
 
 
 namespace mysqlite {
