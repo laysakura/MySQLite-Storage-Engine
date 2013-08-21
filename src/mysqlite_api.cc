@@ -54,8 +54,12 @@ RowCursor *Connection::table_fullscan(const char * const table)
     // Find root pgno of table from sqlite_master.
     RowCursor *sqlite_master_rows = table_fullscan(SQLITE_MASTER_ROOTPGNO);
     while (sqlite_master_rows->next()) {
-      string tbl_name =
-        sqlite_master_rows->get_text(SQLITE_MASTER_COLNO_TBL_NAME);
+      vector<u8> buf;
+      sqlite_master_rows->get_blob(SQLITE_MASTER_COLNO_TBL_NAME, buf);
+      string tbl_name(reinterpret_cast<const char *>(buf.data()), buf.size());
+
+      /* string tbl_name = */
+      /*   sqlite_master_rows->get_blob(SQLITE_MASTER_COLNO_TBL_NAME);  */
       if (0 == strcmp(table, tbl_name.c_str())) {
         root_pgno = sqlite_master_rows->get_int(SQLITE_MASTER_COLNO_ROOTPAGE);
         break;
@@ -110,36 +114,27 @@ mysqlite_type RowCursor::get_type(int colno) const
 {
   // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
   // TODO: So redundunt....
-  // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat ret = tbl_leaf_page.fetch();
   my_assert(ret == MYSQLITE_OK);
 
   RecordCell cell;
-  if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
-      cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
-    u8 *payload_data = new u8[cell.payload_sz];
-    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    my_assert(ret);
-  }
+  vector<u8> buf;
+  tbl_leaf_page.get_ith_cell(cpa_idx, cell, buf);
 
   return sqlite_type_to_mysqlite_type(cell.payload.cols_type[colno]);
 }
 
 int RowCursor::get_int(int colno) const
 {
-  // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat ret = tbl_leaf_page.fetch();
   my_assert(ret == MYSQLITE_OK);
 
   RecordCell cell;
-  if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
-      cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
-    u8 *payload_data = new u8[cell.payload_sz];
-    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    my_assert(ret);
-  }
+  vector<u8> buf;
+  tbl_leaf_page.get_ith_cell(cpa_idx, cell, buf);
+
   if (cell.payload.cols_type[colno] == ST_C0) {
     return 0;
   }
@@ -147,49 +142,54 @@ int RowCursor::get_int(int colno) const
     return 1;
   }
   else {
-    return u8s_to_val<int>(&cell.payload.data[cell.payload.cols_offset[colno]],
+    return u8s_to_val<int>(&buf[cell.payload.cols_offset[colno]],
                            cell.payload.cols_len[colno]);
   }
 }
-string RowCursor::get_text(int colno) const
-{
-  // TODO: use cache for record!!
-  TableLeafPage tbl_leaf_page(visit_path.back().pgno);
-  errstat res = tbl_leaf_page.fetch();
-  my_assert(res == MYSQLITE_OK);
+/* string RowCursor::get_text(int colno) const */
+/* { */
+/*   // TODO: use cache for record!! */
+/*   TableLeafPage tbl_leaf_page(visit_path.back().pgno); */
+/*   errstat res = tbl_leaf_page.fetch(); */
+/*   my_assert(res == MYSQLITE_OK); */
 
-  RecordCell cell;
-  if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
-      cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
-    u8 *payload_data = new u8[cell.payload_sz];
-    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    my_assert(ret);
-  }
+/*   RecordCell cell; */
+/*   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) && */
+/*       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい */
+/*     u8 *payload_data = new u8[cell.payload_sz]; */
+/*     bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data); */
+/*     my_assert(ret); */
+/*   } */
 
-  // TODO: Cache... now memory leak
-  return string((char *)&cell.payload.data[cell.payload.cols_offset[colno]],
-                cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい
-}
+/*   // TODO: Cache... now memory leak */
+/*   return string((char *)&cell.payload.data[cell.payload.cols_offset[colno]], */
+/*                 cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい */
+/* } */
 void RowCursor::get_blob(int colno,
-                           /* out */
-                           vector<u8> &buf) const
+                         /* out */
+                         vector<u8> &buf) const
 {
-  // TODO: use cache for record!!
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat res = tbl_leaf_page.fetch();
   my_assert(res == MYSQLITE_OK);
 
   RecordCell cell;
-  if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) &&
-      cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい
-    u8 *payload_data = new u8[cell.payload_sz];
-    bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data);
-    my_assert(ret);
-  }
+  tbl_leaf_page.get_ith_cell(cpa_idx, cell, buf);
 
-  buf.assign(&cell.payload.data[cell.payload.cols_offset[colno]],
-             &cell.payload.data[cell.payload.cols_offset[colno]] + cell.payload.cols_len[colno]);
+  u8 *p = &buf[cell.payload.cols_offset[colno]];
+  buf.assign(p, p + cell.payload.cols_len[colno]);
   buf.resize(cell.payload.cols_len[colno]);
+
+  /* if (! && */
+  /*     cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい */
+  /*   u8 *payload_data = new u8[cell.payload_sz]; */
+  /*   bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data); */
+  /*   my_assert(ret); */
+  /* } */
+
+  /* buf.assign(&cell.payload.data[cell.payload.cols_offset[colno]], */
+  /*            &cell.payload.data[cell.payload.cols_offset[colno]] + cell.payload.cols_len[colno]); */
+  /* buf.resize(cell.payload.cols_len[colno]); */
 }
 
 

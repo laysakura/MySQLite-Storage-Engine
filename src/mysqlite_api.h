@@ -46,8 +46,8 @@ protected:
   mysqlite_type get_type(int colno) const;
   public:
   int get_int(int colno) const;
-  public:
-  string get_text(int colno) const;
+  /* public: */
+  /* string get_text(int colno) const; */
   public:
   void get_blob(int colno,
                 /* out */
