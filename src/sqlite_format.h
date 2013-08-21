@@ -428,7 +428,6 @@ class TableLeafPage : public BtreePage {
 
     // Copy payload from this page and overflow pages
     u64 offset = 0;
-    //    memcpy(&buf_overflown_payload[offset], cell.payload.data, cell.payload_sz_in_origpg);
     offset += cell.payload_sz_in_origpg;
     Pgsz usable_sz = DbHeader::get_pg_sz() - DbHeader::get_reserved_space();
     u64 payload_sz_rem = cell.payload_sz - cell.payload_sz_in_origpg;
@@ -442,14 +441,9 @@ class TableLeafPage : public BtreePage {
       payload_sz_rem -= payload_sz_inpg;
       buf.insert(buf.begin() + offset,
                  &ovpg.pg_data[sizeof(Pgno)], &ovpg.pg_data[sizeof(Pgno)] + payload_sz_inpg);
-      /* memcpy(&buf_overflown_payload[offset], */
-      /*        &ovpg.pg_data[sizeof(Pgno)], */
-      /*        payload_sz_inpg); */
       offset += payload_sz_inpg;
     }
     my_assert(payload_sz_rem == 0);
-
-    //cell.payload.digest_data();
   }
 
 

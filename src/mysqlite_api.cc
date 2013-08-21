@@ -179,17 +179,6 @@ void RowCursor::get_blob(int colno,
   u8 *p = &buf[cell.payload.cols_offset[colno]];
   buf.assign(p, p + cell.payload.cols_len[colno]);
   buf.resize(cell.payload.cols_len[colno]);
-
-  /* if (! && */
-  /*     cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい */
-  /*   u8 *payload_data = new u8[cell.payload_sz]; */
-  /*   bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data); */
-  /*   my_assert(ret); */
-  /* } */
-
-  /* buf.assign(&cell.payload.data[cell.payload.cols_offset[colno]], */
-  /*            &cell.payload.data[cell.payload.cols_offset[colno]] + cell.payload.cols_len[colno]); */
-  /* buf.resize(cell.payload.cols_len[colno]); */
 }
 
 
