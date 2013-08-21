@@ -52,7 +52,7 @@ RowCursor *Connection::table_fullscan(const char * const table)
   }
   else {
     // Find root pgno of table from sqlite_master.
-    RowCursor *sqlite_master_rows = table_fullscan(SQLITE_MASTER_ROOTPGNO);
+    std::unique_ptr<RowCursor> sqlite_master_rows(table_fullscan(SQLITE_MASTER_ROOTPGNO));
     while (sqlite_master_rows->next()) {
       vector<u8> buf;
       sqlite_master_rows->get_blob(SQLITE_MASTER_COLNO_TBL_NAME, buf);
@@ -69,7 +69,6 @@ RowCursor *Connection::table_fullscan(const char * const table)
       log_errstat(MYSQLITE_NO_SUCH_TABLE);
       return NULL;
     }
-    sqlite_master_rows->close();
   }
 
   return table_fullscan(root_pgno);
@@ -190,14 +189,8 @@ FullscanCursor::FullscanCursor(Pgno root_pgno)
   : RowCursor(root_pgno)
 {
 }
-
 FullscanCursor::~FullscanCursor()
 {
-}
-
-void FullscanCursor::close()
-{
-  delete this;
 }
 
 /*

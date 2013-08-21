@@ -34,12 +34,6 @@ protected:
   virtual bool next() = 0;
 
   /*
-  ** Close cursor
-  */
-  public:
-  virtual void close() = 0;
-
-  /*
   ** Cell value getter.
   */
   public:
@@ -75,15 +69,11 @@ class FullscanCursor : public RowCursor {
   */
   public:
   FullscanCursor(Pgno root_pgno);
-
   public:
-  void close();
+  ~FullscanCursor();
 
   public:
   bool next();
-
-  public:
-  virtual ~FullscanCursor();
 
   private:
   bool jump_to_parent_or_finish_traversal();
@@ -124,7 +114,7 @@ private:
 
   /*
   ** Fullscan table.
-  ** retval must call RowCursor::close()
+  ** retval must be deleted (good to use std::unique_ptr)
   */
   public:
   RowCursor *table_fullscan(const char * const table);
