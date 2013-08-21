@@ -93,7 +93,7 @@ using namespace std;
 ** See varint format (very simple):
 ** http://www.sqlite.org/fileformat2.html - 'A variable-length integer ...'
 */
-static inline u64 varint2u64(u8 *v,
+static inline u64 varint2u64(const u8 * const v,
                              /* out */
                              u8 *len)
 {
@@ -114,7 +114,7 @@ static inline u64 varint2u64(u8 *v,
   *len = 9;
   return res;
 }
-static inline u64 varint2u64(u8 *v)
+static inline u64 varint2u64(const u8 * const v)
 {
   u8 tmp;
   return varint2u64(v, &tmp);
