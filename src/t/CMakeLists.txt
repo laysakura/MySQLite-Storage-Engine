@@ -40,6 +40,10 @@ foreach(t ${mysqlite_utest_targets})
   set(lib_src ${lib_src} ../${t}.cc)
 endforeach(t ${mysqlite_utest_targets})
 add_library(mysqlite_test_target STATIC ${lib_src})
+set_target_properties(
+  mysqlite_test_target PROPERTIES COMPILE_FLAGS
+  "-g -Wall -Wextra -Wunused -Wwrite-strings -Wno-strict-aliasing -o0 -Werror -Wno-unused-parameter -Woverloaded-virtual"
+)
 
 
 ## build each test executable
