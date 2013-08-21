@@ -8,9 +8,8 @@
 ***********************************************************************/
  bool SqliteDb::has_sqlite3_signature(int fd)
 {
-  FILE *f = fdopen(fd, "r");
   char s[SQLITE3_SIGNATURE_SZ];
-  if (MYSQLITE_OK != mysqlite_fread(s, 0, SQLITE3_SIGNATURE_SZ, f)) return false;
+  if (MYSQLITE_OK != mysqlite_read(s, 0, SQLITE3_SIGNATURE_SZ, fd)) return false;
   return strcmp(s, SQLITE3_SIGNATURE) == 0;
 }
 
