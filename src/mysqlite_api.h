@@ -93,24 +93,17 @@ private:
     : refcnt_rdlock_db(0),
       f_db(NULL)
   {}
+  public:
+  ~Connection();
 
   /*
   ** Open a connection to a db
-  **
-  ** @note
-  ** Connection::close() must be used afterwards.
   */
   public:
   errstat open(const char * const db_path);
 
   public:
   bool is_opened() const;
-
-  /*
-  ** Close connection
-  */
-  public:
-  void close();
 
   /*
   ** Fullscan table.

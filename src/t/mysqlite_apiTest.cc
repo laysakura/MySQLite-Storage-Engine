@@ -25,10 +25,6 @@ TEST(Connection, is_opened)
   // connection is already opened
   res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small-jp.sqlite");
   ASSERT_EQ(res, MYSQLITE_CONNECTION_ALREADY_OPEN);
-
-  // connection is closed
-  conn.close();
-  ASSERT_FALSE(conn.is_opened());
 }
 
 // TEST(TypicalUsage, SmallData)
@@ -148,8 +144,6 @@ TEST(IdealUsage, SmallData_get_blob)
     string name(reinterpret_cast<const char *>(buf.data()), buf.size());
     ASSERT_STREQ("Shonan Gold", name.c_str());
   }
-
-  conn.close();
 }
 
 // TEST(CheckAllData, SmallData_jp)

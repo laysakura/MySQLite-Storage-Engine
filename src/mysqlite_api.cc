@@ -10,6 +10,12 @@ namespace mysqlite {
 /***********************************************************************
 ** Connection class
 ***********************************************************************/
+Connection::~Connection()
+{
+  PageCache *pcache = PageCache::get_instance();
+  pcache->close();
+}
+
 errstat Connection::open(const char * const db_path)
 {
   errstat res;
@@ -36,12 +42,6 @@ bool Connection:: is_opened() const
 {
   PageCache *pcache = PageCache::get_instance();
   return pcache->is_opened();
-}
-
-void Connection::close()
-{
-  PageCache *pcache = PageCache::get_instance();
-  pcache->close();
 }
 
 RowCursor *Connection::table_fullscan(const char * const table)
