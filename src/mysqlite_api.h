@@ -22,9 +22,9 @@ protected:
                //
                // 0-+-0
                //   |
-               //   +-1-+-0
-               //   |   |
-               //   +-2 +-1
+               //   +-1--+-0
+               //   |    |
+               //   +-2  +-1
   Pgsz cpa_idx;    // Cell Pointer Array index
 
   /*
@@ -48,6 +48,10 @@ protected:
   int get_int(int colno) const;
   public:
   string get_text(int colno) const;
+  public:
+  void get_blob(int colno,
+                /* out */
+                vector<u8> &buf) const;
 
   public:
   virtual ~RowCursor() {}
