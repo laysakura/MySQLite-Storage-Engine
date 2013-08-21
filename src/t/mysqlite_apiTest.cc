@@ -31,35 +31,77 @@ TEST(Connection, is_opened)
   ASSERT_FALSE(conn.is_opened());
 }
 
-TEST(TypicalUsage, SmallData)
-{
-  using namespace mysqlite;
+// TEST(TypicalUsage, SmallData)
+// {
+//   using namespace mysqlite;
 
-  Connection conn;
-  errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
-  ASSERT_EQ(res, MYSQLITE_OK);
+//   Connection conn;
+//   errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
+//   ASSERT_EQ(res, MYSQLITE_OK);
 
-  conn.rdlock_db();
-  RowCursor *rows = conn.table_fullscan("Beer");
-  ASSERT_TRUE(rows);
+//   conn.rdlock_db();
+//   RowCursor *rows = conn.table_fullscan("Beer");
+//   ASSERT_TRUE(rows);
 
-  while (rows->next()) {
-    // Retrieve columns
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
+//   while (rows->next()) {
+//     // Retrieve columns
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
-    int price = rows->get_int(2);
-    ASSERT_GE(price, 100);
-    ASSERT_LE(price, 1500);
-  }
-  conn.unlock_db();
+//     int price = rows->get_int(2);
+//     ASSERT_GE(price, 100);
+//     ASSERT_LE(price, 1500);
+//   }
+//   conn.unlock_db();
 
-  rows->close();
-  conn.close();
-}
+//   rows->close();
+//   conn.close();
+// }
 
-TEST(CheckAllData, SmallData)
+// TEST(CheckAllData, SmallData)
+// {
+//   using namespace mysqlite;
+
+//   Connection conn;
+//   errstat res = conn.open(MYSQLITE_TEST_DB_DIR "/BeerDB-small.sqlite");
+//   ASSERT_EQ(res, MYSQLITE_OK);
+
+//   conn.rdlock_db();
+//   RowCursor *rows = conn.table_fullscan("Beer");
+//   ASSERT_TRUE(rows);
+
+//   { // 1st row
+//     ASSERT_TRUE(rows->next());
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
+
+//     string name = rows->get_text(1);
+//     ASSERT_STREQ("Shonan Gold", name.c_str());
+
+//     int price = rows->get_int(2);
+//     ASSERT_EQ(price, 450);
+//   }
+//   { // 2nd row
+//     ASSERT_TRUE(rows->next());
+//     ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
+//     ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
+
+//     string name = rows->get_text(1);
+//     ASSERT_STREQ("Ebisu", name.c_str());
+
+//     int price = rows->get_int(2);
+//     ASSERT_EQ(price, 320);
+//   }
+//   conn.unlock_db();
+
+//   rows->close();
+//   conn.close();
+// }
+
+TEST(TypicalUsage, SmallData_get_blob)
 {
   using namespace mysqlite;
 
@@ -73,35 +115,19 @@ TEST(CheckAllData, SmallData)
 
   { // 1st row
     ASSERT_TRUE(rows->next());
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
     ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
 
-    string name = rows->get_text(1);
+    vector<u8> buf;
+    rows->get_blob(1, buf);
+    string name(reinterpret_cast<const char *>(buf.data()), buf.size());
     ASSERT_STREQ("Shonan Gold", name.c_str());
-
-    int price = rows->get_int(2);
-    ASSERT_EQ(price, 450);
   }
-  { // 2nd row
-    ASSERT_TRUE(rows->next());
-    ASSERT_EQ(rows->get_type(0), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(1), MYSQLITE_TEXT);
-    ASSERT_EQ(rows->get_type(2), MYSQLITE_INTEGER);
-
-    string name = rows->get_text(1);
-    ASSERT_STREQ("Ebisu", name.c_str());
-
-    int price = rows->get_int(2);
-    ASSERT_EQ(price, 320);
-  }
-  conn.unlock_db();
 
   rows->close();
   conn.close();
 }
 
-TEST(CheckAllData, SmallData_get_blob)
+TEST(IdealUsage, SmallData_get_blob)
 {
   using namespace mysqlite;
 
@@ -110,6 +136,7 @@ TEST(CheckAllData, SmallData_get_blob)
   ASSERT_EQ(res, MYSQLITE_OK);
 
   conn.rdlock_db();
+  vector<u8> buf;
   RowCursor *rows = conn.table_fullscan("Beer");
   ASSERT_TRUE(rows);
 
