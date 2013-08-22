@@ -34,8 +34,6 @@ TEST(BtreePage, BtreePageValidityCheck_success)
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_TRUE(btree_page.is_valid_hdr());
   conn.unlock_db();
-
-  conn.close();
 }
 TEST(BtreePage, BtreePageValidityCheck_page1)
 {
@@ -50,8 +48,6 @@ TEST(BtreePage, BtreePageValidityCheck_page1)
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_TRUE(btree_page.is_valid_hdr());
   conn.unlock_db();
-
-  conn.close();
 }
 
 TEST(BtreePage, get_ith_cell_offset_EmptyTable)
@@ -67,8 +63,6 @@ TEST(BtreePage, get_ith_cell_offset_EmptyTable)
   ASSERT_EQ(MYSQLITE_OK, btree_page.fetch());
   ASSERT_EQ(0, btree_page.get_ith_cell_offset(0));
   conn.unlock_db();
-
-  conn.close();
 }
 TEST(BtreePage, get_ith_cell_offset_2CellsTable)
 {
@@ -93,8 +87,6 @@ TEST(BtreePage, get_ith_cell_offset_2CellsTable)
     ASSERT_EQ(btree_page.get_ith_cell_offset(2), 0);
   }
   conn.unlock_db();
-
-  conn.close();
 }
 
 
@@ -115,8 +107,9 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
   {
     for (u64 row = 0; row < 2; ++row) {
       RecordCell cell;
+      vector<u8> buf;
 
-      ASSERT_TRUE(tbl_leaf_page.get_ith_cell(row, &cell));
+      tbl_leaf_page.get_ith_cell(row, cell, buf);
       ASSERT_EQ(cell.rowid, row + 1);
       ASSERT_EQ(cell.overflow_pgno, 0u);
 
@@ -131,7 +124,7 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
           ASSERT_EQ(cell.payload.cols_type[col], ST_INT8);
           ASSERT_EQ(2*row + col + 1,
                     u8s_to_val<u8>(
-                      &cell.payload.data[cell.payload.cols_offset[col]],
+                      &buf[cell.payload.cols_offset[col]],
                       cell.payload.cols_len[col]
                     ));
         }
@@ -139,8 +132,6 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
     }
   }
   conn.unlock_db();
-
-  conn.close();
 }
 TEST(TableLeafPage, get_ith_cell_GetTableSchema)
 {
@@ -156,13 +147,14 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
   {
     for (u64 row = 0; row < 2; ++row) {
       RecordCell cell;
+      vector<u8> buf;
 
-      ASSERT_TRUE(tbl_leaf_page.get_ith_cell(row, &cell));
+      tbl_leaf_page.get_ith_cell(row, cell, buf);
       ASSERT_EQ(cell.rowid, row + 1);
       ASSERT_EQ(cell.overflow_pgno, 0u);
 
       ASSERT_EQ(cell.payload.cols_type[SQLITE_MASTER_COLNO_SQL], ST_TEXT);
-      string data((char *)&cell.payload.data[cell.payload.cols_offset[SQLITE_MASTER_COLNO_SQL]],
+      string data((char *)&buf[cell.payload.cols_offset[SQLITE_MASTER_COLNO_SQL]],
                   cell.payload.cols_len[SQLITE_MASTER_COLNO_SQL]);
       char answer[100];
       sprintf(answer, "CREATE TABLE t%llu (c1 INT, c2 INT)", cell.rowid);
@@ -170,8 +162,6 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
     }
   }
   conn.unlock_db();
-
-  conn.close();
 }
 TEST(TableLeafPage, get_ith_cell_OverflowPage)
 {
@@ -186,25 +176,21 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     RecordCell cell;
+    vector<u8> buf;
 
-    ASSERT_FALSE(tbl_leaf_page.get_ith_cell(0, &cell));
+    tbl_leaf_page.get_ith_cell(0, cell, buf);
     ASSERT_EQ(cell.rowid, 1u);
     ASSERT_NE(cell.overflow_pgno, 0u);  // This suggests there are overflow pages
     ASSERT_GT(cell.payload_sz_in_origpg, 0u);
     ASSERT_LT(cell.payload_sz_in_origpg, cell.payload_sz);
-
-    u8 *payload_data = new u8[cell.payload_sz];
-    ASSERT_TRUE(tbl_leaf_page.get_ith_cell(0, &cell, payload_data));
     ASSERT_EQ(cell.payload.cols_type[0], ST_TEXT);
-    string data((char *)&cell.payload.data[cell.payload.cols_offset[0]],
+
+    string data((char *)&buf[cell.payload.cols_offset[0]],
                 cell.payload.cols_len[0]);
     string answer(1000, 'a');
     ASSERT_STREQ(data.c_str(), answer.c_str());
-    delete payload_data;
   }
   conn.unlock_db();
-
-  conn.close();
 }
 TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
 {
@@ -219,23 +205,19 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     RecordCell cell;
+    vector<u8> buf;
 
-    ASSERT_FALSE(tbl_leaf_page.get_ith_cell(0, &cell));
+    tbl_leaf_page.get_ith_cell(0, cell, buf);
     ASSERT_EQ(cell.rowid, 1u);
     ASSERT_NE(cell.overflow_pgno, 0u);
     ASSERT_GT(cell.payload_sz_in_origpg, 0u);
     ASSERT_LT(cell.payload_sz_in_origpg, cell.payload_sz);
-
-    u8 *payload_data = new u8[cell.payload_sz];
-    ASSERT_TRUE(tbl_leaf_page.get_ith_cell(0, &cell, payload_data));
     ASSERT_EQ(cell.payload.cols_type[0], ST_TEXT);
-    string data((char *)&cell.payload.data[cell.payload.cols_offset[0]],
+
+    string data((char *)&buf[cell.payload.cols_offset[0]],
                 cell.payload.cols_len[0]);
     string answer(10000, 'a');
     ASSERT_STREQ(data.c_str(), answer.c_str());
-    delete payload_data;
   }
   conn.unlock_db();
-
-  conn.close();
 }
