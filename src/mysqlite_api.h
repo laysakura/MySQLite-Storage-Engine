@@ -26,6 +26,10 @@ protected:
                //   |    |
                //   +-2  +-1
   Pgsz cpa_idx;    // Cell Pointer Array index
+  vector<u8> rec_buf;  // Buffer for copying record data from page cache.
+                       // Even overflown record is sequentialized here.
+                       // rec_buf is set on every next() call.
+  RecordCell cell;     // Metadata for cell
 
   /*
   ** Whether to have remnant rows
@@ -74,6 +78,9 @@ class FullscanCursor : public RowCursor {
 
   public:
   bool next();
+
+  private:
+  void fill_rec_data();
 
   private:
   bool jump_to_parent_or_finish_traversal();

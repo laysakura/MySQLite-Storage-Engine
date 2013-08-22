@@ -109,31 +109,22 @@ RowCursor::RowCursor(Pgno root_pgno)
 {
 }
 
-mysqlite_type RowCursor::get_type(int colno) const
+void FullscanCursor::fill_rec_data()
 {
-  // TODO: Now both get_type and get_(int|text|...) materializes RecordCell.
-  // TODO: So redundunt....
   TableLeafPage tbl_leaf_page(visit_path.back().pgno);
   errstat ret = tbl_leaf_page.fetch();
   my_assert(ret == MYSQLITE_OK);
 
-  RecordCell cell;
-  vector<u8> buf;
-  tbl_leaf_page.get_ith_cell(cpa_idx, cell, buf);
+  tbl_leaf_page.get_ith_cell(cpa_idx, cell, rec_buf);
+}
 
+mysqlite_type RowCursor::get_type(int colno) const
+{
   return sqlite_type_to_mysqlite_type(cell.payload.cols_type[colno]);
 }
 
 int RowCursor::get_int(int colno) const
 {
-  TableLeafPage tbl_leaf_page(visit_path.back().pgno);
-  errstat ret = tbl_leaf_page.fetch();
-  my_assert(ret == MYSQLITE_OK);
-
-  RecordCell cell;
-  vector<u8> buf;
-  tbl_leaf_page.get_ith_cell(cpa_idx, cell, buf);
-
   if (cell.payload.cols_type[colno] == ST_C0) {
     return 0;
   }
@@ -141,7 +132,7 @@ int RowCursor::get_int(int colno) const
     return 1;
   }
   else {
-    return u8s_to_val<int>(&buf[cell.payload.cols_offset[colno]],
+    return u8s_to_val<int>(&rec_buf[cell.payload.cols_offset[colno]],
                            cell.payload.cols_len[colno]);
   }
 }
@@ -168,16 +159,9 @@ void RowCursor::get_blob(int colno,
                          /* out */
                          vector<u8> &buf) const
 {
-  TableLeafPage tbl_leaf_page(visit_path.back().pgno);
-  errstat res = tbl_leaf_page.fetch();
-  my_assert(res == MYSQLITE_OK);
-
-  RecordCell cell;
-  tbl_leaf_page.get_ith_cell(cpa_idx, cell, buf);
-
-  u8 *p = &buf[cell.payload.cols_offset[colno]];
-  buf.assign(p, p + cell.payload.cols_len[colno]);
-  buf.resize(cell.payload.cols_len[colno]);
+  size_t len = cell.payload.cols_len[colno];
+  buf.assign(&rec_buf[cell.payload.cols_offset[colno]], &rec_buf[cell.payload.cols_offset[colno] + len]);
+  buf.resize(len);
 }
 
 
@@ -239,6 +223,7 @@ bool FullscanCursor::next()
     bool has_cell = cur_leaf_page->has_ith_cell(++cpa_idx);
     if (has_cell) {
       // (1-1) The leaf has more cell
+      fill_rec_data();
       return true;
     } else {
       // (1-2) The leaf has no more cell
