@@ -26,9 +26,10 @@ protected:
                //   |    |
                //   +-2  +-1
   Pgsz cpa_idx;    // Cell Pointer Array index
-  vector<u8> rec_buf;  // Buffer for copying record data from page cache.
-                       // Even overflown record is sequentialized here.
-                       // rec_buf is set on every next() call.
+  bool prev_overflown;  // Used for determine whether to delete rec_buf.
+  u8 *rec_buf;  // Buffer for pointing or copying record data in page cache.
+                // rec_buf is set on every next() call.
+                // Copy is only necessary when overflow page exists.
   RecordCell cell;     // Metadata for cell
 
   /*

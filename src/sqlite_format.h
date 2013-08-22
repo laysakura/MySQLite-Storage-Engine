@@ -315,7 +315,7 @@ public:
   ** @see  Extracting SQLite records - Figure 4. SQLite record format
   */
   public:
-  bool digest_data(const vector<u8> &buf) {
+  bool digest_data(const u8 * const buf) {
     u64 offset = 0;
     u8 len;
     u64 hdr_sz = varint2u64(&buf[offset], &len);
@@ -379,7 +379,8 @@ class TableLeafPage : public BtreePage {
   void get_ith_cell(Pgsz i,
                     /*out*/
                     RecordCell &cell,
-                    vector<u8> &buf) const
+                    u8 **rec_buf,
+                    bool &prev_overflown) const
   {
     assert(PageCache::get_instance()->is_rd_locked());
     u8 len;
@@ -393,7 +394,8 @@ class TableLeafPage : public BtreePage {
     cell.rowid = get_rowid(offset, &len);
     offset += len;
 
-    buf.assign(&pg_data[offset], &pg_data[offset] + (DbHeader::get_pg_sz() - offset));
+    *rec_buf = &pg_data[offset];
+    //buf.assign(, &pg_data[offset] + (DbHeader::get_pg_sz() - offset));
 
     // Overflow page treatment
     // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
@@ -402,6 +404,7 @@ class TableLeafPage : public BtreePage {
     if (cell.payload_sz <= max_local) {
       // no overflow page
       cell.overflow_pgno = 0;
+      prev_overflown = false;
     } else {
       // overflow page exists
       Pgsz min_local = (usable_sz - 12) * 32/255 - 23;
@@ -410,10 +413,11 @@ class TableLeafPage : public BtreePage {
 
       cell.overflow_pgno = u8s_to_val<Pgno>(&pg_data[offset + cell.payload_sz_in_origpg],
                                              BTREECELL_OVERFLOWPGNO_LEN);
-      get_overflown_ith_cell(i, cell, buf);
+      get_overflown_ith_cell(i, cell, rec_buf);
+      prev_overflown = true;
     }
 
-    cell.payload.digest_data(buf);
+    cell.payload.digest_data(*rec_buf);
   }
 
   /*
@@ -425,7 +429,7 @@ class TableLeafPage : public BtreePage {
   public:
   void get_overflown_ith_cell(Pgsz i, const RecordCell &cell,
                               /*out*/
-                              vector<u8> &buf) const
+                              u8 **rec_buf) const
   {
     // Asserted get_ith_cell(Pgsz i, RecordCell *cell) is called first
     my_assert(cell.overflow_pgno != 0);
@@ -445,8 +449,14 @@ class TableLeafPage : public BtreePage {
       overflow_pgno = u8s_to_val<Pgno>(&ovpg.pg_data[0], sizeof(Pgno));
       Pgsz payload_sz_inpg = min<u64>(usable_sz - sizeof(Pgno), payload_sz_rem);
       payload_sz_rem -= payload_sz_inpg;
-      buf.insert(buf.begin() + offset,
-                 &ovpg.pg_data[sizeof(Pgno)], &ovpg.pg_data[sizeof(Pgno)] + payload_sz_inpg);
+
+      u8 *p = *rec_buf;
+      *rec_buf = (u8 *)malloc(offset + payload_sz_inpg);  // deleted in FullscanCursor::next()
+      memcpy(*rec_buf, p, offset);
+      memcpy(*rec_buf + offset, &ovpg.pg_data[sizeof(Pgno)], payload_sz_inpg);
+      /* buf.insert(buf.begin() + offset, */
+      /*            &ovpg.pg_data[sizeof(Pgno)], &ovpg.pg_data[sizeof(Pgno)] + payload_sz_inpg); */
+
       offset += payload_sz_inpg;
     }
     my_assert(payload_sz_rem == 0);

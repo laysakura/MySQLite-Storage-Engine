@@ -105,7 +105,7 @@ int Connection::unlock_db()
 ** RowCursor class
 ***********************************************************************/
 RowCursor::RowCursor(Pgno root_pgno)
-  : visit_path(1, BtreePathNode(root_pgno, 0)), cpa_idx(-1)
+  : visit_path(1, BtreePathNode(root_pgno, 0)), cpa_idx(-1), prev_overflown(false), rec_buf(NULL)
 {
 }
 
@@ -116,7 +116,8 @@ void FullscanCursor::fill_rec_data()
   my_assert(ret == MYSQLITE_OK);
 
   cell.payload.clear();  // clear previous record info
-  tbl_leaf_page.get_ith_cell(cpa_idx, cell, rec_buf);
+  tbl_leaf_page.get_ith_cell(cpa_idx, cell, &rec_buf, prev_overflown);
+  assert(rec_buf);
 }
 
 mysqlite_type RowCursor::get_type(int colno) const
@@ -203,6 +204,12 @@ FullscanCursor::~FullscanCursor()
 */
 bool FullscanCursor::next()
 {
+  // delete copied record
+  if (prev_overflown) {
+    prev_overflown = false;
+    free(rec_buf);
+  }
+
   BtreePage cur_page(visit_path.back().pgno);
   errstat ret = cur_page.fetch();
   my_assert(ret == MYSQLITE_OK);
