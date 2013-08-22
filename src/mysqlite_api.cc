@@ -56,11 +56,7 @@ RowCursor *Connection::table_fullscan(const char * const table)
     while (sqlite_master_rows->next()) {
       vector<u8> buf;
       sqlite_master_rows->get_blob(SQLITE_MASTER_COLNO_TBL_NAME, buf);
-      string tbl_name(reinterpret_cast<const char *>(buf.data()), buf.size());
-
-      /* string tbl_name = */
-      /*   sqlite_master_rows->get_blob(SQLITE_MASTER_COLNO_TBL_NAME);  */
-      if (0 == strcmp(table, tbl_name.c_str())) {
+      if (strlen(table) == buf.size() && 0 == memcmp(table, buf.data(), buf.size())) {
         root_pgno = sqlite_master_rows->get_int(SQLITE_MASTER_COLNO_ROOTPAGE);
         break;
       }
@@ -115,6 +111,7 @@ void FullscanCursor::fill_rec_data()
   errstat ret = tbl_leaf_page.fetch();
   my_assert(ret == MYSQLITE_OK);
 
+  cell.payload.clear();  // clear previous record info
   tbl_leaf_page.get_ith_cell(cpa_idx, cell, rec_buf);
 }
 
@@ -136,25 +133,6 @@ int RowCursor::get_int(int colno) const
                            cell.payload.cols_len[colno]);
   }
 }
-/* string RowCursor::get_text(int colno) const */
-/* { */
-/*   // TODO: use cache for record!! */
-/*   TableLeafPage tbl_leaf_page(visit_path.back().pgno); */
-/*   errstat res = tbl_leaf_page.fetch(); */
-/*   my_assert(res == MYSQLITE_OK); */
-
-/*   RecordCell cell; */
-/*   if (!tbl_leaf_page.get_ith_cell(cpa_idx, &cell) && */
-/*       cell.has_overflow_pg()) {  //オーバフローページのために毎回こんなこと書かなきゃいけないのって割とこわい */
-/*     u8 *payload_data = new u8[cell.payload_sz]; */
-/*     bool ret = tbl_leaf_page.get_ith_cell(cpa_idx, &cell, payload_data); */
-/*     my_assert(ret); */
-/*   } */
-
-/*   // TODO: Cache... now memory leak */
-/*   return string((char *)&cell.payload.data[cell.payload.cols_offset[colno]], */
-/*                 cell.payload.cols_len[colno]);  //これもシンタックスシュガーが欲しい */
-/* } */
 void RowCursor::get_blob(int colno,
                          /* out */
                          vector<u8> &buf) const
@@ -162,6 +140,14 @@ void RowCursor::get_blob(int colno,
   size_t len = cell.payload.cols_len[colno];
   buf.assign(&rec_buf[cell.payload.cols_offset[colno]], &rec_buf[cell.payload.cols_offset[colno] + len]);
   buf.resize(len);
+}
+string RowCursor::get_raw_string(int colno) const
+{
+  vector<u8> buf;
+  get_blob(colno, buf);
+  /* return string(reinterpret_cast<const char *>(buf.data()), buf.size()); */
+  string s(reinterpret_cast<const char *>(buf.data()), buf.size());
+  return s;
 }
 
 

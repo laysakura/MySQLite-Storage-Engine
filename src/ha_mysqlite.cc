@@ -825,8 +825,9 @@ int ha_mysqlite::find_current_row(uchar *buf)
         break;
       case MYSQLITE_TEXT:
         {
-          string s = rows->get_text(colno);
-          (*field)->store(s.c_str(), s.size(), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
+          vector<u8> buf;
+          rows->get_blob(colno, buf);
+          (*field)->store(buf.data(), buf.size(), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
         }
         break;
       default:
@@ -1264,8 +1265,12 @@ bool copy_sqlite_table_formats(/* out */
   my_assert(rows);
 
   while (rows->next()) {
-    table_names.push_back(rows->get_text(SQLITE_MASTER_COLNO_NAME));
-    ddls.push_back(rows->get_text(SQLITE_MASTER_COLNO_SQL));
+    vector<u8> buf;
+    rows->get_blob(SQLITE_MASTER_COLNO_NAME, buf);
+    table_names.push_back(string(buf.data(), buf.size()));
+
+    rows->get_blob(SQLITE_MASTER_COLNO_SQL, buf);
+    ddls.push_back(string(buf.data(), buf.size()));
   }
 
   rows->close();

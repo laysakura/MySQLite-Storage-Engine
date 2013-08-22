@@ -302,6 +302,12 @@ public:
     : cols_offset(0), cols_len(0), cols_type(0)
   {}
 
+  public:
+  void clear() {
+    cols_offset.clear();
+    cols_len.clear();
+    cols_type.clear();
+  }
 
   /*
   ** Read from buf and fill cols_*.
