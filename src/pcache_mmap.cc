@@ -56,6 +56,7 @@ bool PageCache::is_opened() const
 u8 * PageCache::fetch(Pgno pgno) const
 {
   my_assert(pgno >= 1);
+  my_assert(is_rd_locked());
   return &p_mapped[pgsz * (pgno - 1)];
 }
 
