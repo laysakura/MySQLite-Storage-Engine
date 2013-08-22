@@ -393,7 +393,7 @@ class TableLeafPage : public BtreePage {
     cell.rowid = get_rowid(offset, &len);
     offset += len;
 
-    buf.assign(&pg_data[offset], &pg_data[offset] + DbHeader::get_pg_sz());
+    buf.assign(&pg_data[offset], &pg_data[offset] + (DbHeader::get_pg_sz() - offset));
 
     // Overflow page treatment
     // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
