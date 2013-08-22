@@ -86,7 +86,7 @@ class ha_mysqlite: public handler
   THR_LOCK_DATA lock;      ///< MySQL lock
   Mysqlite_share *share;    ///< Shared lock info
 
-  mysqlite::RowCursor *rows;  // rows currently fetching
+  std::unique_ptr<mysqlite::RowCursor> rows;  // rows currently fetching
 
 public:
   ha_mysqlite(handlerton *hton, TABLE_SHARE *table_arg);

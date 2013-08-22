@@ -389,7 +389,6 @@ int Mysqlite_share::free_share(Mysqlite_share *share)
   int result_code= 0;
   if (!--share->use_count) {
     /* nakatani: あるテーブルへのリファレンスカウントが0になったら，本格的にshareにまつわるデータをfreeしていく */
-    share->conn.close();
     my_hash_delete(&mysqlite_open_tables, (uchar*) share);
     thr_lock_delete(&share->lock);
     mysql_mutex_destroy(&share->mutex);
@@ -750,7 +749,7 @@ int ha_mysqlite::rnd_init(bool scan)
     abort();    // TODO: More decent way to report SQLite db is not opened.
   }
 
-  rows = share->conn.table_fullscan(table_share->table_name.str);
+  rows.reset(share->conn.table_fullscan(table_share->table_name.str));
   my_assert(rows);
 
   DBUG_RETURN(0);
@@ -759,9 +758,6 @@ int ha_mysqlite::rnd_init(bool scan)
 int ha_mysqlite::rnd_end()
 {
   DBUG_ENTER("ha_mysqlite::rnd_end");
-
-  rows->close();
-
   DBUG_RETURN(0);
 }
 
@@ -827,7 +823,7 @@ int ha_mysqlite::find_current_row(uchar *buf)
         {
           vector<u8> buf;
           rows->get_blob(colno, buf);
-          (*field)->store(buf.data(), buf.size(), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
+          (*field)->store(reinterpret_cast<const char *>(buf.data()), buf.size(), &my_charset_utf8_unicode_ci);  // TODO: Japanese support
         }
         break;
       default:
@@ -1261,19 +1257,17 @@ bool copy_sqlite_table_formats(/* out */
   Mysqlite_share *share = Mysqlite_share::get_share();
   my_assert(share->conn.is_opened());
 
-  RowCursor *rows = share->conn.table_fullscan("sqlite_master");
+  std::unique_ptr<RowCursor> rows(share->conn.table_fullscan("sqlite_master"));
   my_assert(rows);
 
   while (rows->next()) {
     vector<u8> buf;
     rows->get_blob(SQLITE_MASTER_COLNO_NAME, buf);
-    table_names.push_back(string(buf.data(), buf.size()));
+    table_names.push_back(string(reinterpret_cast<const char *>(buf.data()), buf.size()));
 
     rows->get_blob(SQLITE_MASTER_COLNO_SQL, buf);
-    ddls.push_back(string(buf.data(), buf.size()));
+    ddls.push_back(string(reinterpret_cast<const char *>(buf.data()), buf.size()));
   }
-
-  rows->close();
   return true;
 }
 
@@ -1302,7 +1296,6 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
     log_errstat(MYSQLITE_OUT_OF_MEMORY);
     return 1;
   }
-  if (share->conn.is_opened()) share->conn.close();  // TODO: 2つ以上create tableするとおかしくなるね
   errstat res = share->conn.open(path);
   if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
     // Newly create SQLite database file

@@ -16,12 +16,16 @@ Connection::~Connection()
   pcache->close();
 }
 
+// TODO: *****MOST IMPORTANT*****
+// - Each thread have the same number of Connection instance as open DB.
+// - Page cache is shared across threads and is maintained by reference count.
 errstat Connection::open(const char * const db_path)
 {
   errstat res;
 
   if (is_opened()) {
-    return MYSQLITE_CONNECTION_ALREADY_OPEN;
+    PageCache *pcache = PageCache::get_instance();
+    pcache->close();
   }
 
   // Page cache
