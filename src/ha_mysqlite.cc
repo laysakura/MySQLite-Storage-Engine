@@ -739,16 +739,9 @@ int ha_mysqlite::index_last(uchar *buf)
   @see
   filesort.cc, records.cc, sql_handler.cc, sql_select.cc, sql_table.cc and sql_update.cc
 */
-double t0;
-double get_ith_cell_offset_T, digest_data_T, varint2u64_T, push_back_T;
-
 int ha_mysqlite::rnd_init(bool scan)
 {
   DBUG_ENTER("ha_mysqlite::rnd_init");
-
-  get_ith_cell_offset_T = 0; digest_data_T = 0;
-  varint2u64_T = 0; push_back_T = 0;
-  log_msg("shokika!!!!\n");
 
   // share->conn should be already opened by UDF sqlite_db().
   if (!share->conn.is_opened()) {
@@ -764,9 +757,6 @@ int ha_mysqlite::rnd_init(bool scan)
 
 int ha_mysqlite::rnd_end()
 {
-  log_msg("get_ith_cell_offset=%e sec, digest_data=%e sec\n", get_ith_cell_offset_T, digest_data_T);
-  log_msg("varint2u64_T=%e sec, push_back_T=%e sec\n", varint2u64_T, push_back_T);
-
   DBUG_ENTER("ha_mysqlite::rnd_end");
   DBUG_RETURN(0);
 }

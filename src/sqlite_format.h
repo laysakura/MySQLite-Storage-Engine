@@ -28,9 +28,6 @@
 #include "mysqlite_types.h"
 #include "utils.h"
 #include "pcache.h"
-extern double t0;
-extern double get_ith_cell_offset_T, digest_data_T, varint2u64_T, push_back_T;
-
 
 
 struct BtreePathNode {
@@ -388,11 +385,7 @@ class TableLeafPage : public BtreePage {
     assert(PageCache::get_instance()->is_rd_locked());
     u8 len;
     Pgsz cell_offset, offset;
-
-    //    t0 = clock_gettime_sec();
     cell_offset = offset = get_ith_cell_offset(i);
-    //    get_ith_cell_offset_T += clock_gettime_sec() - t0;
-
     assert(cell_offset != 0);
 
     cell.payload_sz = get_payload_sz(offset, &len);
@@ -402,6 +395,7 @@ class TableLeafPage : public BtreePage {
     offset += len;
 
     *rec_buf = &pg_data[offset];
+    //buf.assign(, &pg_data[offset] + (DbHeader::get_pg_sz() - offset));
 
     // Overflow page treatment
     // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
@@ -423,9 +417,7 @@ class TableLeafPage : public BtreePage {
       prev_overflown = true;
     }
 
-    t0 = clock_gettime_sec();
     cell.payload.digest_data(*rec_buf);
-    digest_data_T += clock_gettime_sec() - t0;
   }
 
   /*
