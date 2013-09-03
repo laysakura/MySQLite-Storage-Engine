@@ -349,6 +349,7 @@ Mysqlite_share *Mysqlite_share::get_share()
     If share is not present in the hash, create a new share and
     initialize its members.
   */
+  //TODO: **NOW** ここはマジでテーブルごとのshareをとる部分なので，innodbでも参考にしてhash keyの生成のしかたを考える
   if (!(share = (Mysqlite_share*)my_hash_search(&mysqlite_open_tables,
                                                 (const uchar *)"global key",
                                                 strlen("global key"))))  // TODO: Per table share
@@ -497,6 +498,15 @@ static bool mysqlite_is_supported_system_table(const char *db,
 
 int ha_mysqlite::open(const char *name, int mode, uint test_if_locked)
 {
+  // see p.186 of the book.
+
+  // TODO: **NOW** 
+  // ここをうまく書けば，既にmysqlにコピーされたテーブルに対していちいちcreate tableしないでもよくなるはず.
+  //   ここにおいて，pcache & db file は，
+  //   1. どのhandler = client もopenしていなければオープン
+  //   2. もうオープンされていればそのまま
+  //   される．
+
   DBUG_ENTER("ha_mysqlite::open");
 
   if (!(share = Mysqlite_share::get_share()))
@@ -525,6 +535,8 @@ int ha_mysqlite::open(const char *name, int mode, uint test_if_locked)
 
 int ha_mysqlite::close(void)
 {
+  // TODO: **NOW** open() の逆をやろう
+
   DBUG_ENTER("ha_mysqlite::close");
   DBUG_RETURN(Mysqlite_share::free_share(share));
 }
@@ -562,6 +574,8 @@ int ha_mysqlite::close(void)
 
 int ha_mysqlite::write_row(uchar *buf)
 {
+  // see p.190 of the book
+
   DBUG_ENTER("ha_mysqlite::write_row");
   /*
     Example of a successful write_row. We don't store the data
@@ -598,6 +612,7 @@ int ha_mysqlite::write_row(uchar *buf)
 */
 int ha_mysqlite::update_row(const uchar *old_data, uchar *new_data)
 {
+  // see p.190 of the book.
 
   DBUG_ENTER("ha_mysqlite::update_row");
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
@@ -1193,6 +1208,8 @@ ha_rows ha_mysqlite::records_in_range(uint inx, key_range *min_key,
 int ha_mysqlite::create(const char *name, TABLE *table_arg,
                        HA_CREATE_INFO *create_info)
 {
+  // see p.185 of the book
+
   DBUG_ENTER("ha_mysqlite::create");
   /*
     This is not implemented but we want someone to be able to see that it

@@ -64,7 +64,8 @@ public:
   mysql_mutex_t mutex;
   THR_LOCK lock;
 
-  mysqlite::Connection conn;   // TODO: Should a Connection be shared with all handlers??
+  // TODO: **NOW** connectionは1handlerにつき1個でしょう
+  mysqlite::Connection conn; // TODO: Should a Connection be shared with all handlers??
   uint use_count;
 
   static Mysqlite_share *get_share(); // Get the share
@@ -103,7 +104,7 @@ public:
     The name of the index type that will be used for display.
     Don't implement this method unless you really have indexes.
    */
-  const char *index_type(uint inx) { return "HASH"; }
+  const char *index_type(uint inx) { return "BTREE"; }
 
   /** @brief
     The file extensions.
