@@ -86,6 +86,63 @@ using namespace std;
 
 
 /*
+ * Timer
+ */
+#include <time.h>
+#include <sys/time.h>
+#include <stdint.h>
+
+static inline uint64_t
+rdtsc()
+{
+  uint64_t ret;
+#if defined _LP64
+  asm volatile
+    (
+     "rdtsc\n\t"
+     "mov $32, %%rdx\n\t"
+     "orq %%rdx, %%rax\n\t"
+     "mov %%rax, %0\n\t"
+     :"=m"(ret)
+     :
+     :"%rax", "%rdx");
+#else
+  asm volatile
+    (
+     "rdtsc\n\t"
+     "mov %%eax, %0\n\t"
+     "mov %%edx, %1\n\t"
+     :"=m"(((uint32_t*)&ret)[0]), "=m"(((uint32_t*)&ret)[1])
+     :
+     :"%eax", "%edx");
+#endif
+  return ret;
+}
+
+static inline double
+clock_gettime_sec()
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  return ts.tv_sec + (double)ts.tv_nsec*1e-9;
+}
+
+static inline double
+gettimeofday_sec()
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec + (double)tv.tv_usec*1e-6;
+}
+
+static inline double
+clock_to_sec(uint64_t clk, int cpu_MHz)
+{
+  return (double)clk / cpu_MHz * 1e-6;
+}
+
+
+/*
 ** Read (v[0] | v[1] ...) as a variant.
 ** If MSB of v[i] is 0, then v[i+1] is ignored.
 **
