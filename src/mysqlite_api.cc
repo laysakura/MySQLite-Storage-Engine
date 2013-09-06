@@ -108,6 +108,10 @@ RowCursor::RowCursor(Pgno root_pgno)
   : visit_path(1, BtreePathNode(root_pgno, 0)), cpa_idx(-1), prev_overflown(false), rec_buf(NULL)
 {
 }
+RowCursor::~RowCursor()
+{
+  if (rec_buf && prev_overflown) free(rec_buf);
+}
 
 void FullscanCursor::fill_rec_data()
 {
@@ -208,6 +212,7 @@ bool FullscanCursor::next()
   if (prev_overflown) {
     prev_overflown = false;
     free(rec_buf);
+    rec_buf = NULL;
   }
 
   BtreePage cur_page(visit_path.back().pgno);

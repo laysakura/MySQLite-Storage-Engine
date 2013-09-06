@@ -107,9 +107,10 @@ TEST(TableLeafPage, get_ith_cell_2CellsTable)
   {
     for (u64 row = 0; row < 2; ++row) {
       RecordCell cell;
-      vector<u8> buf;
+      u8 *buf;
+      bool prev_overflown;
 
-      tbl_leaf_page.get_ith_cell(row, cell, buf);
+      tbl_leaf_page.get_ith_cell(row, cell, &buf, prev_overflown);
       ASSERT_EQ(cell.rowid, row + 1);
       ASSERT_EQ(cell.overflow_pgno, 0u);
 
@@ -147,9 +148,10 @@ TEST(TableLeafPage, get_ith_cell_GetTableSchema)
   {
     for (u64 row = 0; row < 2; ++row) {
       RecordCell cell;
-      vector<u8> buf;
+      u8 *buf;
+      bool prev_overflown;
 
-      tbl_leaf_page.get_ith_cell(row, cell, buf);
+      tbl_leaf_page.get_ith_cell(row, cell, &buf, prev_overflown);
       ASSERT_EQ(cell.rowid, row + 1);
       ASSERT_EQ(cell.overflow_pgno, 0u);
 
@@ -176,17 +178,20 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage)
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     RecordCell cell;
-    vector<u8> buf;
+    u8 *buf;
+    bool prev_overflown;
 
-    tbl_leaf_page.get_ith_cell(0, cell, buf);
+    tbl_leaf_page.get_ith_cell(0, cell, &buf, prev_overflown);
     ASSERT_EQ(cell.rowid, 1u);
     ASSERT_NE(cell.overflow_pgno, 0u);  // This suggests there are overflow pages
     ASSERT_GT(cell.payload_sz_in_origpg, 0u);
     ASSERT_LT(cell.payload_sz_in_origpg, cell.payload_sz);
     ASSERT_EQ(cell.payload.cols_type[0], ST_TEXT);
 
+    ASSERT_TRUE(prev_overflown);
     string data((char *)&buf[cell.payload.cols_offset[0]],
                 cell.payload.cols_len[0]);
+    free(buf);  // mmm... terrible
     string answer(1000, 'a');
     ASSERT_STREQ(data.c_str(), answer.c_str());
   }
@@ -205,17 +210,20 @@ TEST(TableLeafPage, get_ith_cell_OverflowPage10000)
   ASSERT_EQ(MYSQLITE_OK, tbl_leaf_page.fetch());
   {
     RecordCell cell;
-    vector<u8> buf;
+    u8 *buf;
+    bool prev_overflown;
 
-    tbl_leaf_page.get_ith_cell(0, cell, buf);
+    tbl_leaf_page.get_ith_cell(0, cell, &buf, prev_overflown);
     ASSERT_EQ(cell.rowid, 1u);
     ASSERT_NE(cell.overflow_pgno, 0u);
     ASSERT_GT(cell.payload_sz_in_origpg, 0u);
     ASSERT_LT(cell.payload_sz_in_origpg, cell.payload_sz);
     ASSERT_EQ(cell.payload.cols_type[0], ST_TEXT);
 
+    ASSERT_TRUE(prev_overflown);
     string data((char *)&buf[cell.payload.cols_offset[0]],
                 cell.payload.cols_len[0]);
+    free(buf);  // mmm... terrible
     string answer(10000, 'a');
     ASSERT_STREQ(data.c_str(), answer.c_str());
   }

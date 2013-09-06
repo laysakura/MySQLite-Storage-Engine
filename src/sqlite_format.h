@@ -395,7 +395,6 @@ class TableLeafPage : public BtreePage {
     offset += len;
 
     *rec_buf = &pg_data[offset];
-    //buf.assign(, &pg_data[offset] + (DbHeader::get_pg_sz() - offset));
 
     // Overflow page treatment
     // @see  https://github.com/laysakura/SQLiteDbVisualizer/README.org - Track overflow pages
@@ -451,11 +450,14 @@ class TableLeafPage : public BtreePage {
       payload_sz_rem -= payload_sz_inpg;
 
       u8 *p = *rec_buf;
-      *rec_buf = (u8 *)malloc(offset + payload_sz_inpg);  // deleted in FullscanCursor::next()
+      if ((*rec_buf = (u8 *)malloc(offset + payload_sz_inpg)) == NULL) {  // deleted in FullscanCursor::next()
+        char err [256];
+        log_msg("malloc() failed: %s\n", strerror_r(errno, err, 256));
+        return;
+      }
       memcpy(*rec_buf, p, offset);
+      if (offset != cell.payload_sz_in_origpg) free(p);   // *rec_buf points to pcache space at the very beginning.
       memcpy(*rec_buf + offset, &ovpg.pg_data[sizeof(Pgno)], payload_sz_inpg);
-      /* buf.insert(buf.begin() + offset, */
-      /*            &ovpg.pg_data[sizeof(Pgno)], &ovpg.pg_data[sizeof(Pgno)] + payload_sz_inpg); */
 
       offset += payload_sz_inpg;
     }

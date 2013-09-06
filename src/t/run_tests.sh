@@ -4,7 +4,7 @@ run_test() {
     t=$1
     t_name=$(basename $t)
     if $t > /dev/null 2>&1; then
-        if valgrind --tool=memcheck --leak-check=full $t > /dev/null 2>&1; then
+        if valgrind --error-exitcode=1 --tool=memcheck --leak-check=full $t > /dev/null 2>&1; then
             echo "[$t_name] ok"
         else
             echo "[$t_name] memory leak!!"

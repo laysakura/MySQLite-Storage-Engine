@@ -53,7 +53,7 @@ protected:
   string get_raw_string(int colno) const;
 
   public:
-  virtual ~RowCursor() {}
+  virtual ~RowCursor();
 
   protected:
   RowCursor(Pgno root_pgno);
