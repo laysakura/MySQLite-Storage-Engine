@@ -244,4 +244,134 @@ private:
 };
 
 
+#include <map>
+#include <iostream>
+#include <mutex>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+
+/**
+ * Note:
+ *     every function is thread safe.
+ */
+class PersistentStringMap {
+  public:
+  static const size_t MAX_STR_LEN = 1024;
+
+  private:
+  std::map<std::string, std::string> m;
+  std::mutex map_mutex, file_mutex;
+
+  public:
+  ~PersistentStringMap() {}
+
+  /**
+   * Returns:
+   *     a value which is pair to the 'key'. If 'key' is not registered to map, empty string is returned.
+   */
+  public:
+  std::string get(const std::string &key) {
+    std::lock_guard<std::mutex> lock(map_mutex);
+    return m.find(key) == m.end() ? std::string("") : m.find(key)->second;
+  }
+  /**
+   * Args:
+   *     both 'key' and 'val' must be shorter than MAX_STR_LEN (default 1024).
+   * Returns:
+   *     false if 'key' is already registered to the map or key/val is too long. 'val' is not overridden in this case.
+   *     true otherwise.
+   */
+  public:
+  bool put(const std::string &key, const std::string &val) {
+    if (key.size() >= MAX_STR_LEN || val.size() >= MAX_STR_LEN) {
+      log_msg("PersistentStringMap::put(): key or val is too long.\n");
+      return false;
+    }
+
+    std::lock_guard<std::mutex> lock(map_mutex);
+    if (m.find(key) != m.end()) {
+      log_msg("PersistentStringMap::put(): key '%s' is already registered.\n", key.c_str());
+      return false;
+    }
+    m[key] = val;
+    return true;
+  }
+
+  /**
+   * Returns:
+   *     true if succeeded in serializing. Otherwise false.
+   * Serialize format:
+   *     [4bytes: key length] [key] [4bytes: val length] [val] ...
+   */
+  public:
+  bool deserialize(const char * const path) {
+    std::lock_guard<std::mutex> lock(file_mutex);
+
+    FILE *f = fopen(path, "rb");
+    if (!f) goto fopen_err;
+
+    if (fseek(f, 0, SEEK_SET) == -1) goto ioerr;
+    {
+      size_t k_sz, v_sz;
+      char k[MAX_STR_LEN], v[MAX_STR_LEN];
+      while (1 == fread(&k_sz, sizeof(k_sz), 1, f)) {
+        if (1 != fread(k, k_sz, 1, f)) goto ioerr;
+        if (1 != fread(&v_sz, sizeof(v_sz), 1, f)) goto ioerr;
+        if (1 != fread(v, v_sz, 1, f)) goto ioerr;
+        k[k_sz] = '\0'; v[v_sz] = '\0';
+        put(k, v);
+      }
+      if (ferror(f)) goto ioerr;
+    }
+
+    fclose(f);
+    return true;
+
+  ioerr:
+    fclose(f);
+  fopen_err:
+    char err[256];
+    log_msg("Error on accessing %s: %s\n", path, strerror_r(errno, err, 256));
+    return false;
+  }
+  /**
+   * Returns:
+   *     true if succeeded in deserializing. Otherwise false.
+   */
+  public:
+  bool serialize(const char * const path) {
+    std::lock_guard<std::mutex> lock(file_mutex);
+
+    FILE *f = fopen(path, "wb");
+    if (!f) goto fopen_err;
+
+    for (std::map<std::string, std::string>::const_iterator it = m.begin(); it != m.end(); ++it) {
+      std::string k = it->first;
+      std::string v = it->second;
+      size_t sz;
+      {
+        sz = k.size();
+        if (1 != fwrite(&sz, sizeof(size_t), 1, f)) goto ioerr;
+        if (1 != fwrite(k.c_str(), sz, 1, f)) goto ioerr;
+      }
+      {
+        sz = v.size();
+        if (1 != fwrite(&sz, sizeof(size_t), 1, f)) goto ioerr;
+        if (1 != fwrite(v.c_str(), sz, 1, f)) goto ioerr;
+      }
+    }
+    fclose(f);
+    return true;
+
+  ioerr:
+    fclose(f);
+  fopen_err:
+    char err[256];
+    log_msg("Error on accessing %s: %s\n", path, strerror_r(errno, err, 256));
+    return false;
+  }
+};
+
+
 #endif /* _UTILS_H_ */

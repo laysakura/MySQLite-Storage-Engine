@@ -160,3 +160,44 @@ TEST(SqliteDb, usage)
     ASSERT_EQ(sqlite_db.mode(), SqliteDb::READ_ONLY);
   }
 }
+
+TEST(PersistentStringMap, usage)
+{
+  { // similar usage as std::map
+    PersistentStringMap m;
+    ASSERT_TRUE(m.put("foo", "fooVal"));
+    ASSERT_TRUE(m.put("bar", "barVal"));
+    ASSERT_STREQ(m.get("foo").c_str(), "fooVal");
+    ASSERT_STREQ(m.get("bar").c_str(), "barVal");
+    ASSERT_STREQ(m.get("buz").c_str(), "");
+  }
+  { // duplex key is not allowed
+    PersistentStringMap m;
+    ASSERT_TRUE(m.put("foo", "fooVal"));
+    ASSERT_FALSE(m.put("foo", "fooVal2"));
+    ASSERT_STREQ(m.get("foo").c_str(), "fooVal");
+  }
+  { // serialization
+    PersistentStringMap m;
+    ASSERT_TRUE(m.put("foo", "fooVal"));
+    ASSERT_TRUE(m.put("bar", "barVal"));
+    ASSERT_TRUE(m.serialize(MYSQLITE_TEST_DB_DIR "/PersistentStringMap.data"));
+    ASSERT_TRUE(m.serialize(MYSQLITE_TEST_DB_DIR "/PersistentStringMap.data"));  // repeated serialization is totally safe
+  }
+  { // deserialization
+    PersistentStringMap m;
+    ASSERT_TRUE(m.deserialize(MYSQLITE_TEST_DB_DIR "/PersistentStringMap.data"));
+    ASSERT_STREQ(m.get("foo").c_str(), "fooVal");
+    ASSERT_STREQ(m.get("bar").c_str(), "barVal");
+  }
+  ASSERT_EQ(unlink(MYSQLITE_TEST_DB_DIR "/PersistentStringMap.data"), 0);
+}
+TEST(PersistentStringMap, corner_case)
+{
+  { // too long key
+    PersistentStringMap m;
+    ASSERT_TRUE(m.put(std::string(PersistentStringMap::MAX_STR_LEN - 1, 'a'), "aVal"));
+    ASSERT_FALSE(m.put(std::string(PersistentStringMap::MAX_STR_LEN, 'a'), "aVal2"));
+    ASSERT_FALSE(m.put(std::string(PersistentStringMap::MAX_STR_LEN * 100, 'a'), "aVal3"));
+  }
+}
