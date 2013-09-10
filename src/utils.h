@@ -264,6 +264,7 @@ class PersistentStringMap {
   std::mutex map_mutex, file_mutex;
 
   public:
+  PersistentStringMap() {}
   ~PersistentStringMap() {}
 
   /**

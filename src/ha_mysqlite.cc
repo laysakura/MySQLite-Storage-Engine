@@ -252,12 +252,6 @@ static void init_mysqlite_psi_keys() {}
 
 Mysqlite_share::Mysqlite_share()
 {
-  thr_lock_init(&lock);
-
-  abort();
-  // mysql_mutex_init(mysqlite_key_mutex, &mysqlite_mutex, MY_MUTEX_INIT_FAST);
-  // (void) my_hash_init(&mysqlite_open_tables, system_charset_info, 32, 0, 0,
-  //                     (my_hash_get_key)mysqlite_get_key, 0, 0);
 }
 
 
@@ -314,7 +308,14 @@ static int mysqlite_init_func(void *p)
   mysqlite_hton->discover_table_structure= mysqlite_assisted_discovery;
 #endif //MARIADB
 
-  // Page cache
+  Mysqlite_share *share = Mysqlite_share::get_share();
+  if (!share) {
+    log_errstat(MYSQLITE_OUT_OF_MEMORY);
+    return 1;
+  }
+  if (!share->sqlitedb_path_map.deserialize(MYSQLITE_SQLITEDB_PATH_MAP)) {
+    log_msg("${datadir}/%s cannot be opened. You need to CREATE TABLE xxx ENGINE=mysqlite FILE_NAME='/path/to/sqlitedb' for every SQLite DB.", MYSQLITE_SQLITEDB_PATH_MAP);
+  }
 
   DBUG_RETURN(0);
 }
@@ -354,10 +355,10 @@ Mysqlite_share *Mysqlite_share::get_share()
                                                 (const uchar *)"global key",
                                                 strlen("global key"))))  // TODO: Per table share
   {
-    if (!my_multi_malloc(MYF(MY_WME | MY_ZEROFILL),
-                         &share, sizeof(*share),
-                         NullS))
-    {
+    try {
+      share = new Mysqlite_share();
+    } catch (std::bad_alloc &e) {
+      log_msg("failed in new: %s\n", e);
       mysql_mutex_unlock(&mysqlite_mutex);
       return NULL;
     }
@@ -370,13 +371,13 @@ Mysqlite_share *Mysqlite_share::get_share()
     mysql_mutex_init(mysqlite_key_mutex_Mysqlite_share_mutex,
                      &share->mutex, MY_MUTEX_INIT_FAST);
   }
-
+  share->use_count++;
   mysql_mutex_unlock(&mysqlite_mutex);
   DBUG_RETURN(share);
 
 error:
   mysql_mutex_unlock(&mysqlite_mutex);
-  my_free(share);
+  delete share;
   DBUG_RETURN(NULL);
 }
 
@@ -393,7 +394,7 @@ int Mysqlite_share::free_share(Mysqlite_share *share)
     my_hash_delete(&mysqlite_open_tables, (uchar*) share);
     thr_lock_delete(&share->lock);
     mysql_mutex_destroy(&share->mutex);
-    my_free(share);
+    delete share;
   }
   mysql_mutex_unlock(&mysqlite_mutex);
 
@@ -1355,6 +1356,13 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
       return b;
     }
   }
+
+  { // register map of <mysqldb/table> -> <newly-opened sqlite db path>
+    string db(table_s->table_name.str), tbl(table_s->db.str);
+    share->sqlitedb_path_map.put(db + "/" + tbl, path);
+    share->sqlitedb_path_map.serialize(MYSQLITE_SQLITEDB_PATH_MAP);
+  }
+
   return 0;
 }
 #endif //MARIADB

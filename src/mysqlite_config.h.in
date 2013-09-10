@@ -13,6 +13,7 @@
 
 // Directory structure
 #define MYSQLITE_TEST_DB_DIR "@MYSQLITE_TEST_DB_DIR@"
+#define MYSQLITE_SQLITEDB_PATH_MAP "@MYSQLITE_SQLITEDB_PATH_MAP@"
 
 // Page cache size (in bytes)
 #define MYSQLITE_PCACHE_SZ @MYSQLITE_PCACHE_SZ@

@@ -14,12 +14,14 @@ add_definitions("-DMYSQLITE_USE_MMAP=1")
 # Directory structure
 ################################################################################
 set(MYSQLITE_TEST_DB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/t/db")
+set(MYSQLITE_SQLITEDB_PATH_MAP "mysqlite_sqlitedb_path_map")
 
 
 ################################################################################
 # Define macros
 ################################################################################
 add_definitions("-std=c++0x")
+add_definitions("-fexceptions")
 add_definitions("-DMYSQLITE_USING_CMAKE")
 add_definitions("-DMYSQL_DYNAMIC_PLUGIN")
 add_definitions( -DMARIADB -DFORCE_INIT_OF_VARS )
@@ -28,7 +30,7 @@ add_definitions( -DMARIADB -DFORCE_INIT_OF_VARS )
 ################################################################################
 # Debug mode settings
 ################################################################################
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O3 -DENABLED_DEBUG_SYNC -DSAFE_MUTEX -DSAFEMALLOC -DUSE_MYSYS_NEW")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -DENABLED_DEBUG_SYNC -DSAFE_MUTEX -DSAFEMALLOC -DUSE_MYSYS_NEW")
 
 
 ################################################################################

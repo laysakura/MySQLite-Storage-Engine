@@ -67,6 +67,7 @@ public:
   // TODO: **NOW** connectionは1handlerにつき1個でしょう
   mysqlite::Connection conn; // TODO: Should a Connection be shared with all handlers??
   uint use_count;
+  PersistentStringMap sqlitedb_path_map;
 
   static Mysqlite_share *get_share(); // Get the share
   static int free_share(Mysqlite_share *share); // Free the share
