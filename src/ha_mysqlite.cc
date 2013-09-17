@@ -91,6 +91,8 @@
 
 #undef SAFE_MUTEX  // TODO: Necessary to use correct TABLE_SHARE::LOCK_ha_data->m_mutex.
                    // TODO: But should not be undefed.
+#define MYSQL_SERVER 1
+
 #include "ha_mysqlite.h"
 #include "pcache.h"
 #include "utils.h"
@@ -358,7 +360,7 @@ Mysqlite_share *Mysqlite_share::get_share()
     try {
       share = new Mysqlite_share();
     } catch (std::bad_alloc &e) {
-      log_msg("failed in new: %s\n", e);
+      log_msg("failed in new: %s\n", e.what());
       mysql_mutex_unlock(&mysqlite_mutex);
       return NULL;
     }
@@ -1290,6 +1292,56 @@ bool copy_sqlite_table_formats(/* out */
 }
 
 #ifdef MARIADB
+
+static int _import_a_table_from_engine(THD *thd, TABLE_SHARE *table_s,
+                                       const char * const mysql_table,
+                                       const char * const sqlite_dbpath,
+                                       const char * const sqlite_table)
+{
+  PageCache *pcache = PageCache::get_instance();
+  pcache->rd_lock();
+
+  // Duplicate SQLite DDLs to MySQL
+  vector<string> sqlite_table_names, ddls;
+  bool res2 = copy_sqlite_table_formats(sqlite_table_names, ddls);
+  pcache->unlock();
+
+  if (!res2) return HA_ERR_INTERNAL_ERROR;
+
+  bool no_such_table = true;
+  for (unsigned int i = 0; i < sqlite_table_names.size(); ++i) {
+    if (0 != strcmp(sqlite_table, sqlite_table_names[i].c_str())) continue;
+
+    no_such_table = false;
+    int res = table_s->init_from_sql_statement_string(thd, true,
+                                                      ddls[i].c_str(), ddls[i].size());
+    if (res) {
+      log_msg("Error in creating table %s: %s\n", sqlite_table, ddls[i].c_str());
+      return res;
+    }
+  }
+  if (no_such_table) {
+    log_msg("Table %s is not in %s.\n", sqlite_table, sqlite_dbpath);
+    DBUG_RETURN(HA_ERR_INTERNAL_ERROR);
+  }
+
+  DBUG_RETURN(0);
+}
+
+static bool _split_db_table(const char *file_name,
+                            /* out */
+                            string &dbpath, string &table)
+{
+  char *p = strstr(const_cast<char *>(file_name), ",");
+  if (!p) {
+    log_msg("'file_name' option must be the following format: <SQLite DB path>,<SQLite table name>\n");
+    return false;
+  }
+  table = string(p + 1);
+  dbpath = string(file_name, p - file_name);
+  return true;
+}
+
 /**
   @brief
   mysqlite_assisted_discovery() is called when issueing CREATE TABLE with no columns.
@@ -1303,10 +1355,10 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
                                        TABLE_SHARE *table_s,
                                        HA_CREATE_INFO *create_info)
 {
-  int b = 0;
   PTOS        topt= table_s->option_struct;
-  const char *path=   topt->filename;
   bool is_existing_db = false;
+  string dbpath, table;
+  if (!_split_db_table(topt->filename, dbpath, table)) DBUG_RETURN(HA_ERR_INTERNAL_ERROR);
 
   // Open DB and Connection
   Mysqlite_share *share = Mysqlite_share::get_share();
@@ -1314,7 +1366,7 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
     log_errstat(MYSQLITE_OUT_OF_MEMORY);
     return 1;
   }
-  errstat res = share->conn.open(path);
+  errstat res = share->conn.open(dbpath.c_str());
   if (res == MYSQLITE_DB_FILE_NOT_FOUND) {
     // Newly create SQLite database file
     is_existing_db = false;
@@ -1323,6 +1375,10 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
     // SQLite database file already exists
     is_existing_db = true;
   }
+  else if (res == MYSQLITE_CANNOT_OPEN_DB_FILE) {
+    log_msg("Failed to open %s as SQLite DB.\n", dbpath.c_str());
+    return HA_ERR_INTERNAL_ERROR;
+  }
   else {
     log_errstat(res);
     return HA_ERR_INTERNAL_ERROR;
@@ -1330,36 +1386,14 @@ static int mysqlite_assisted_discovery(handlerton *hton, THD* thd,
 
   assert(is_existing_db);  // TODO: support new creation of db files
   if (is_existing_db) {
-    PageCache *pcache = PageCache::get_instance();
-    pcache->rd_lock();
-
-    // Duplicate SQLite DDLs to MySQL
-    // TODO: ここで，TABLE_SHARE::table_name に入ってるDDLだけをsqlite_masterから取り出す必要がある
-    vector<string> table_names, ddls;
-    bool res2 = copy_sqlite_table_formats(table_names, ddls);
-    pcache->unlock();
-
-    if (!res2) return HA_ERR_INTERNAL_ERROR;
-
     // Create requested table
-    string *ddl = NULL;
-    for (unsigned int i = 0; i < table_names.size(); ++i) {
-      if (table_names[i] == table_s->table_name.str) {
-        ddl = &ddls[i];
-      }
-    }
-    if (!ddl) return HA_ERR_NO_SUCH_TABLE;
-    b = table_s->init_from_sql_statement_string(thd, true,
-                                                (*ddl).c_str(), (*ddl).size());
-    if (b) {
-      log_msg("Error in creating table: %s\n", (*ddl).c_str());
-      return b;
-    }
+    int res = _import_a_table_from_engine(thd, table_s, table_s->table_name.str, dbpath.c_str(), table.c_str());
+    if (res) DBUG_RETURN(res);
   }
 
   { // register map of <mysqldb/table> -> <newly-opened sqlite db path>
-    string db(table_s->table_name.str), tbl(table_s->db.str);
-    share->sqlitedb_path_map.put(db + "/" + tbl, path);
+    string mysql_db(table_s->db.str), mysql_table(table_s->table_name.str);
+    share->sqlitedb_path_map.put(mysql_db + "/" + mysql_table, dbpath);
     share->sqlitedb_path_map.serialize(MYSQLITE_SQLITEDB_PATH_MAP);
   }
 

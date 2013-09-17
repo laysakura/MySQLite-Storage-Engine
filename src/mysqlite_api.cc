@@ -34,11 +34,12 @@ errstat Connection::open(const char * const db_path)
 
   if (res == MYSQLITE_OK) {
     // succeeded in opening db_path (read-mode or write-mode)
-  } else {
+  } else if (res == MYSQLITE_CANNOT_OPEN_DB_FILE) {
     // failed in opening db_path
+    log_msg("Failed to open %s as SQLite DB.\n", db_path);
+  } else {
     log_errstat(res);
   }
-
   return res;
 }
 

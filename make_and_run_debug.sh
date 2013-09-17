@@ -7,9 +7,6 @@ make VERBOSE=1 && ($sudo make install && $sudo pkill mysql ; $sudo_mysql $basedi
 
 [ $? -ne 0 ] && exit 1
 
-sleep 5
+/bin/sh ./common-commands.sh
 
-$basedir/bin/mysql -uroot mysql < support-files/uninstall.sql
-$basedir/bin/mysql -uroot mysql < support-files/install.sql
-
-$sudo gdb -p $(ps auxw |grep mysql[d] |grep -v sudo |awk '{print $2}')
+$sudo gdb -p $(pgrep mysqld)
