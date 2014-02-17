@@ -21,7 +21,7 @@ my $dbh = DBI->connect(
 
 # Reading existing DB
 ok($dbh->do("drop table if exists PREFIX01"));
-ok($dbh->do("create table PREFIX01 engine=mysqlite file_name='$testdir/db/01-a.sqlite'"));
+ok($dbh->do("create table PREFIX01 engine=mysqlite file_name='$testdir/db/01-a.sqlite,T0'"));
 
 
 # Checking if new DB is really created
